@@ -1,0 +1,37 @@
+# ── Virtual Environment ──────────────────────────────────────
+venv/
+env/
+.env/
+
+# ── Konfigurasi Sensitif (berisi password) ───────────────────
+config.py
+
+# ── Data Wajah (privasi) — folder tetap ada, isi diabaikan ──
+dataset/*
+!dataset/.gitkeep
+
+# ── Model LBPH (ukuran besar) — folder tetap ada, isi diabaikan
+models/*
+!models/.gitkeep
+
+# ── File Sementara Python ────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── File Sistem ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Log & Database Lokal ──────────────────────────────────────
+*.log
+*.db
+*.sqlite3
+
+# ── IDE ───────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
