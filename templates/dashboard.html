@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Sistem Absensi{% endblock %}
+
+{% block content %}
+<!-- Section 1: Stats Cards -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Hadir -->
+    <div class="bg-surface-container-low border border-outline-variant p-card-padding rounded-xl relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-on-surface-variant text-label-caps uppercase font-label-caps">Hadir Hari Ini</p>
+                <h3 class="text-display-lg font-display-lg text-primary mt-1">{{ statistik.hadir_hari_ini }}</h3>
+            </div>
+            <div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary">how_to_reg</span>
+            </div>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-body-sm font-body-sm text-emerald-500">Live hari ini</span>
+        </div>
+    </div>
+    <!-- Terlambat -->
+    <div class="bg-surface-container-low border border-outline-variant p-card-padding rounded-xl relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-on-surface-variant text-label-caps uppercase font-label-caps">Terlambat</p>
+                <h3 class="text-display-lg font-display-lg text-tertiary mt-1">{{ statistik.terlambat_hari_ini }}</h3>
+            </div>
+            <div class="w-10 h-10 bg-tertiary/10 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-tertiary">schedule</span>
+            </div>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <span class="text-body-sm font-body-sm text-on-surface-variant">Membutuhkan review</span>
+        </div>
+    </div>
+    <!-- Alpha -->
+    <div class="bg-surface-container-low border border-outline-variant p-card-padding rounded-xl relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-on-surface-variant text-label-caps uppercase font-label-caps">Alpha</p>
+                <h3 class="text-display-lg font-display-lg text-error mt-1">{{ statistik.alpha_hari_ini }}</h3>
+            </div>
+            <div class="w-10 h-10 bg-error/10 rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-error">person_off</span>
+            </div>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <span class="text-body-sm font-body-sm text-on-surface-variant">Hari ini</span>
+        </div>
+    </div>
+    <!-- Total -->
+    <div class="bg-surface-container-low border border-outline-variant p-card-padding rounded-xl relative overflow-hidden group">
+        <div class="flex justify-between items-start relative z-10">
+            <div>
+                <p class="text-on-surface-variant text-label-caps uppercase font-label-caps">Total Mahasiswa</p>
+                <h3 class="text-display-lg font-display-lg text-on-surface mt-1">{{ statistik.total_mahasiswa }}</h3>
+            </div>
+            <div class="w-10 h-10 bg-surface-container-highest rounded-lg flex items-center justify-center">
+                <span class="material-symbols-outlined text-on-surface">groups</span>
+            </div>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+            <span class="text-body-sm font-body-sm text-on-surface-variant">{{ statistik.total_kelas }} kelas aktif</span>
+        </div>
+    </div>
+</section>
+
+<!-- Section 2: Kamera + Absensi Hari Ini -->
+<section class="grid grid-cols-12 gap-8 mb-8">
+    <!-- Kamera Absensi -->
+    <div class="col-span-12 lg:col-span-7 bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden flex flex-col h-[500px]">
+        <div class="p-gutter border-b border-outline-variant flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">videocam</span>
+                <h4 class="font-title-sm text-title-sm text-on-surface">Kamera Absensi</h4>
+            </div>
+            <div class="flex items-center gap-2 bg-emerald-500/10 px-3 py-1 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span class="text-body-sm font-semibold text-emerald-500">Anti-Spoofing: Aktif</span>
+            </div>
+        </div>
+        <div class="flex-1 bg-surface-container-lowest relative flex items-center justify-center">
+            <!-- Placeholder kamera — akan diganti dengan feed real-time -->
+            <div class="text-center">
+                <span class="material-symbols-outlined text-6xl text-on-surface-variant/20 mb-4">videocam</span>
+                <p class="text-on-surface-variant font-body-sm">Feed kamera akan ditampilkan di sini</p>
+                <p class="text-outline text-[11px] mt-1">Jalankan <code class="bg-surface-container px-1.5 py-0.5 rounded text-primary">python face_recognize.py</code> untuk memulai</p>
+            </div>
+            <!-- Tombol kontrol kamera -->
+            <div class="absolute top-6 right-6 flex flex-col gap-3">
+                <button class="bg-emerald-500 text-surface p-4 rounded-full shadow-lg hover:scale-105 transition-transform flex items-center gap-2">
+                    <span class="material-symbols-outlined">videocam</span>
+                    <span class="font-bold pr-2">Kamera ON</span>
+                </button>
+                <button class="bg-surface-container-highest text-on-surface p-4 rounded-full shadow-lg hover:bg-surface-bright transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined">videocam_off</span>
+                    <span class="font-bold pr-2">Kamera OFF</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Absensi Hari Ini -->
+    <div class="col-span-12 lg:col-span-5 bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden flex flex-col h-[500px]">
+        <div class="p-gutter border-b border-outline-variant flex justify-between items-center bg-surface-container-high/50">
+            <h4 class="font-title-sm text-title-sm text-on-surface">Absensi Hari Ini</h4>
+            <a href="{{ url_for('absensi_rekap') }}" class="text-primary text-body-sm font-semibold hover:underline">Lihat Semua</a>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 bg-surface-container-low z-10">
+                    <tr>
+                        <th class="px-6 py-4 text-label-caps text-on-surface-variant font-label-caps border-b border-outline-variant">Mahasiswa</th>
+                        <th class="px-6 py-4 text-label-caps text-on-surface-variant font-label-caps border-b border-outline-variant">Waktu</th>
+                        <th class="px-6 py-4 text-label-caps text-on-surface-variant font-label-caps border-b border-outline-variant">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-outline-variant">
+                    {% for a in absensi_hari_ini %}
+                    <tr class="hover:bg-surface-container-high transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-secondary text-[20px]">person</span>
+                                </div>
+                                <div>
+                                    <p class="font-body-md text-on-surface font-semibold">{{ a.nama }}</p>
+                                    <p class="text-[12px] text-on-surface-variant">{{ a.nim }} — {{ a.nama_kelas }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-body-sm text-on-surface-variant">{{ a.waktu_absen }}</td>
+                        <td class="px-6 py-4">
+                            {% if a.status == 'hadir' %}
+                            <span class="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-500 text-[12px] font-bold">Hadir</span>
+                            {% elif a.status == 'terlambat' %}
+                            <span class="px-3 py-1 rounded-full bg-tertiary/15 text-tertiary text-[12px] font-bold">Terlambat</span>
+                            {% elif a.status == 'alpha' %}
+                            <span class="px-3 py-1 rounded-full bg-error/15 text-error text-[12px] font-bold">Alpha</span>
+                            {% else %}
+                            <span class="px-3 py-1 rounded-full bg-secondary/15 text-secondary text-[12px] font-bold">{{ a.status|capitalize }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="px-6 py-12 text-center">
+                            <span class="material-symbols-outlined text-3xl text-on-surface-variant/20 mb-2">event_busy</span>
+                            <p class="text-body-sm text-on-surface-variant">Belum ada absensi hari ini</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- Section 3: Statistik bawah -->
+<section class="grid grid-cols-12 gap-8">
+    <!-- Kehadiran Per Kelas -->
+    <div class="col-span-12 lg:col-span-6 bg-surface-container-low border border-outline-variant rounded-xl p-card-padding">
+        <div class="flex justify-between items-center mb-6">
+            <h4 class="font-title-sm text-title-sm text-on-surface">Kehadiran Per Kelas</h4>
+            <span class="material-symbols-outlined text-on-surface-variant">bar_chart</span>
+        </div>
+        <div class="space-y-6">
+            <div class="text-center py-8 text-on-surface-variant">
+                <span class="material-symbols-outlined text-3xl text-on-surface-variant/20 mb-2">analytics</span>
+                <p class="font-body-sm">Statistik akan tersedia setelah data absensi terkumpul</p>
+            </div>
+        </div>
+    </div>
+    <!-- Jadwal Aktif Sekarang -->
+    <div class="col-span-12 lg:col-span-6 bg-surface-container-low border border-outline-variant rounded-xl p-card-padding">
+        <div class="flex justify-between items-center mb-6">
+            <h4 class="font-title-sm text-title-sm text-on-surface">Info Sistem</h4>
+            <span class="material-symbols-outlined text-primary">info</span>
+        </div>
+        <div class="space-y-4">
+            <div class="p-4 bg-primary/5 border-l-4 border-primary rounded-r-xl">
+                <h5 class="font-body-md font-bold text-primary">Total Kelas</h5>
+                <p class="text-body-sm text-on-surface-variant">{{ statistik.total_kelas }} kelas terdaftar dalam sistem</p>
+            </div>
+            <div class="p-4 bg-surface-container-high/40 border-l-4 border-outline-variant rounded-r-xl">
+                <h5 class="font-body-md font-bold text-on-surface">Total Mahasiswa</h5>
+                <p class="text-body-sm text-on-surface-variant">{{ statistik.total_mahasiswa }} mahasiswa terdaftar</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

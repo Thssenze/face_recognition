@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Daftar Mahasiswa - Attendance Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#472a00",
+                    "on-surface-variant": "#bdc8d1",
+                    "on-secondary-fixed-variant": "#3c475a",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "tertiary-fixed-dim": "#ffb960",
+                    "surface-tint": "#7bd0ff",
+                    "on-secondary-fixed": "#111c2d",
+                    "inverse-on-surface": "#2c3135",
+                    "primary-fixed-dim": "#7bd0ff",
+                    "primary-container": "#38bdf8",
+                    "error-container": "#93000a",
+                    "outline": "#87929a",
+                    "on-tertiary-container": "#613b00",
+                    "on-error-container": "#ffdad6",
+                    "surface": "#0f1418",
+                    "outline-variant": "#3e484f",
+                    "background": "#0f1418",
+                    "surface-bright": "#343a3e",
+                    "surface-container-lowest": "#0a0f12",
+                    "on-primary-fixed": "#001e2c",
+                    "on-primary": "#00354a",
+                    "tertiary": "#ffc176",
+                    "secondary-container": "#3e495d",
+                    "surface-container-high": "#252b2e",
+                    "on-surface": "#dee3e8",
+                    "on-primary-container": "#004965",
+                    "tertiary-container": "#f1a02b",
+                    "on-error": "#690005",
+                    "tertiary-fixed": "#ffddb8",
+                    "error": "#ffb4ab",
+                    "on-primary-fixed-variant": "#004c69",
+                    "inverse-primary": "#00668a",
+                    "primary": "#8ed5ff",
+                    "surface-dim": "#0f1418",
+                    "secondary-fixed-dim": "#bcc7de",
+                    "surface-variant": "#303539",
+                    "on-tertiary-fixed": "#2a1700",
+                    "inverse-surface": "#dee3e8",
+                    "secondary": "#bcc7de",
+                    "on-background": "#dee3e8",
+                    "on-secondary-container": "#aeb9d0",
+                    "secondary-fixed": "#d8e3fb",
+                    "surface-container-low": "#171c20",
+                    "surface-container-highest": "#303539",
+                    "primary-fixed": "#c4e7ff",
+                    "surface-container": "#1b2024",
+                    "on-secondary": "#263143"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin": "24px",
+                    "card-padding": "20px",
+                    "sidebar-width": "260px",
+                    "section-gap": "32px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "title-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0f1418;
+            color: #dee3e8;
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-nav {
+            backdrop-filter: blur(12px);
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f1418;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3e484f;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #87929a;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background overflow-x-hidden">
+<aside class="fixed left-0 top-0 h-screen w-[260px] bg-surface-container dark:bg-surface-container-low backdrop-blur-md bg-opacity-80 border-r border-outline-variant dark:border-outline-variant flex flex-col gap-4 py-8 px-4 z-50">
+<div class="px-4 mb-6">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary font-bold tracking-tight">Admin Panel</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant opacity-70">Biometric System</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary dark:text-primary font-bold border-l-4 border-primary bg-primary-container/5 transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Mahasiswa</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">school</span>
+<span>Kelas &amp; MK</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span>Jadwal</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span>Rekap Absensi</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200 ease-in-out font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span>Laporan</span>
+</a>
+</nav>
+<div class="mt-auto pt-8 px-4 border-t border-outline-variant/30 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional studio portrait of a university administrator in a modern dark navy setting. The lighting is crisp and highlights the subject's confident expression. The overall aesthetic is clean and corporate, matching a technical administrative interface with deep slate tones and soft ambient shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9SJ68u8oKDXsH2uiCWb0g4wJgSTtAZYlAmqn7_jkfi4D3A7JQgJOaODwA7BQAgPpJylcshwXj40mbZtJkm7IQE_MoBvs2Zi3omVveGWniXCas6FBk6QIWnSt8tUf8kEW8WqC9CZsgy4F4bwo5deUHQRm_OYpS7AsglPXbTREDocJDFcv8xq9Un8CR_g3iL9D1-KzqNroa7_cBQgkLoDQwoGnmCBhRBZG2g5-CIsGNlKfQAkRGQgHV07Pd5ZzNzcNCbN5fjc7UoVHr"/>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface font-bold">Admin Utama</p>
+<p class="text-[10px] text-on-surface-variant">System Overseer</p>
+</div>
+</div>
+</aside>
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant dark:border-outline-variant flex justify-between items-center h-16 px-gutter ml-auto">
+<div class="flex items-center bg-surface-container h-10 rounded-lg px-4 border border-outline-variant/30 w-96 focus-within:ring-2 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-xl mr-2">search</span>
+<input class="bg-transparent border-none text-on-surface placeholder:text-on-surface-variant/50 w-full focus:ring-0 font-body-sm text-body-sm" placeholder="Cari data mahasiswa..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-variant/30 hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">account_circle</span>
+<span class="font-label-caps text-label-caps text-on-surface">Profil</span>
+</button>
+</div>
+</header>
+<main class="ml-[260px] pt-24 px-gutter pb-12">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Daftar Mahasiswa</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Kelola data dan biometrik mahasiswa terdaftar</p>
+</div>
+<button class="bg-primary-container text-on-primary-container px-6 py-2.5 rounded-lg flex items-center gap-2 font-title-sm text-title-sm hover:brightness-110 transition-all shadow-lg shadow-primary-container/20">
+<span class="material-symbols-outlined">person_add</span>
+                Tambah Mahasiswa Baru
+            </button>
+</div>
+<div class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding mb-section-gap">
+<div class="flex flex-col lg:flex-row gap-4 items-end lg:items-center justify-between">
+<div class="flex flex-wrap gap-4 w-full lg:w-auto">
+<div class="flex flex-col gap-1.5 min-w-[200px]">
+<label class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Filter Kelas</label>
+<select class="bg-surface border border-outline-variant text-on-surface rounded-lg py-2 px-3 font-body-sm text-body-sm focus:ring-primary focus:border-primary w-full">
+<option>Semua Kelas</option>
+<option>TI-2023-A</option>
+<option>TI-2023-B</option>
+<option>SI-2022-C</option>
+</select>
+</div>
+<div class="flex flex-col gap-1.5 min-w-[200px]">
+<label class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest px-1">Urutkan</label>
+<select class="bg-surface border border-outline-variant text-on-surface rounded-lg py-2 px-3 font-body-sm text-body-sm focus:ring-primary focus:border-primary w-full">
+<option>Nama (A-Z)</option>
+<option>Nama (Z-A)</option>
+<option>Terbaru</option>
+</select>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-variant transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+<button class="p-2 border border-outline-variant rounded-lg hover:bg-surface-variant transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">download</span>
+</button>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden shadow-2xl">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-variant/30 border-b border-outline-variant">
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Mahasiswa</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">NIM</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Kelas</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Terdaftar</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase">Status Bio</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase text-right">Aksi</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden bg-surface-variant border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Close-up portrait of a young female Indonesian student with a neutral expression, wearing a minimalist modern student ID around her neck. The background is a soft-focus laboratory or high-tech classroom setting with cool blue and slate lighting. The visual style is realistic and professional with high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcu8m5Ej1QHy81v54OOTiQzULsUU9QZyJNEH8oQBBBBCEo92YBaSelhGdfp4q57mLR3zo9pW8XyL7CZ2gaZq20V3nFVW6rWQ0orxhH68k4Ja1Npagc_feXYtXpVrwMUobhTN9fcg7SYvlym8fs8vf1bFKi-UIpyxo5oGbXqdBDZK2fEAFKkIhZsjIPyHV9jaxZDN2-qH_jzncfWINyAf7kyICdV3md8l-Le9PoLMYXlYrC0pExfN70AjRpqE_5MJApyMnYze_EDXet"/>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Anisa Putri Rahayu</p>
+<p class="text-[12px] text-on-surface-variant">anisaputri@univ.ac.id</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">2301040012</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-secondary text-[12px] font-semibold border border-secondary/20">TI-2023-A</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">12 Sep 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-emerald-400">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[12px] font-semibold">Aktif</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden bg-surface-variant border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="High-resolution headshot of a male Indonesian student in a tech-focused environment. The lighting is dramatic, coming from one side, casting soft shadows that emphasize facial features. The aesthetic is contemporary and clean, using a palette of deep blues and charcoal grays to convey a professional educational atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJrQ29tlLG9hNnsi6wYGj9hEXRex-55qIPNsUdP7XbYzOCPFVqIiUvwI1xKmy2V7eM5PHz4HQv-7G3GQ4w2KWwi6UuAmjt8V0ZGzPYkguIbxrQkeQwkOnZA6Z7hEw9SwO0k-8cgHDW-w-oE16_pyYNYRQhTXrh0tkS0dvsmeIpND1GEu_lzjYGB3MSSDKB6_5HGuS8be842qW-njRAw5TeuQPyUdmXIdPj7OT5DQaW_oBIATRe3LMDFWJ-1wV7zV5AXzUSEKsovPwD"/>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Bambang Wijaya</p>
+<p class="text-[12px] text-on-surface-variant">bambang.w@univ.ac.id</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">2301040045</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-secondary text-[12px] font-semibold border border-secondary/20">TI-2023-A</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">12 Sep 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-emerald-400">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[12px] font-semibold">Aktif</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden bg-surface-variant border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A portrait of a young university student in a bright, modern learning hub. The lighting is natural but professionally controlled, emphasizing a scholarly and determined look. The color scheme features deep navy and bright sky-blue accents in the background, maintaining a consistent dark-themed technical minimalism aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMW8U52ZFL60xbfz-XevFbK931EimtID6Fbi40OK6hj8Avzbb6s47wnlnIiBXcHk5UC-YLVPICn8QrLsbRPUham5Gyt9G4nGCcYF5U4yxYX1JhoplmnDo_VMoGK8-5fPJ-RimD9gzvnlJfLld7F80RMIrhoUCu96f1XrfhFHlzOayHvQ5fCw3a8klcW863siyzmTfdwL0tFC4nWiwTUPPrY67rAsu5N5sYeE29tdb-ia1QPKkMUSULYtorN0N-i9txrgsOhSndvU9D"/>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Citra Lestari</p>
+<p class="text-[12px] text-on-surface-variant">citra.lestari@univ.ac.id</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">2202050089</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-secondary text-[12px] font-semibold border border-secondary/20">SI-2022-C</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">05 Agu 2022</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-amber-400">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+<span class="text-[12px] font-semibold">Belum Terdaftar</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden bg-surface-variant border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A portrait of a male student wearing spectacles in a tech-driven university setting. The lighting is high-key and modern, creating a clean technical aesthetic. The background is a mix of deep navy and slate tones with a slight blur, emphasizing the subject's studious and professional demeanor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBidCyQv-MHotlosMYN6zswf7Q3q1xz7xYMRYESRE5JLyQqv_zlrE1ILyo551zCT6MLqA06JB84vRLmDRV3wgzZjQXnDAwo4TA46V7UK4v1d-MfdbSr23c9jxLyuLDWqbdGtikw56mGgFzYoAvzAPavlgbn0WkJWOKc6rX9NsRXaBzSzFi2p2ltqu1uMcdVAjbmWAPwipJSXr2B8P5hyGrvd1r7WInOuHl4Re6uqfhVmnK42R_jmVDpHajFvKxnsIQs74YHpbZW5cw4"/>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Dimas Prayoga</p>
+<p class="text-[12px] text-on-surface-variant">dimas.p@univ.ac.id</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">2301040102</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-secondary text-[12px] font-semibold border border-secondary/20">TI-2023-B</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">14 Sep 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-emerald-400">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[12px] font-semibold">Aktif</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg overflow-hidden bg-surface-variant border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Professional studio portrait of an Indonesian female university student. The setting is minimalist with a deep navy backdrop and subtle lighting accents that highlight her features and smart-casual attire. The mood is focused and academic, perfectly aligned with a high-end administrative system UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCu7bZcf0lrFnraN4iRVP7MFTLb4EMWWshGQ0YIf_de5_QZoK4Rw4KD0oLjrji8nG8MlaUn_p4FbY5CFZSaxjdk5cqx2PAX9tCcekaeBq7HPMBEyml2Kk5e_KghTo3yyLaEzOZsjNB5l7POdgNHRhMYp1hcIf8SyIc0YxT8hO2Ao7E_T-tXFqVTj7ft-PQdZBYyXAykq9pASFqj71VMnWpGmzOKtMXM4S1Bz_W7aB8z-AsPrkdn35dVuMxelSg24g7Ha6j-vGoElYKb"/>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Eka Kurniawati</p>
+<p class="text-[12px] text-on-surface-variant">eka.kurnia@univ.ac.id</p>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">2301040121</td>
+<td class="px-6 py-4">
+<span class="px-2.5 py-0.5 rounded-full bg-secondary-container/30 text-secondary text-[12px] font-semibold border border-secondary/20">TI-2023-B</span>
+</td>
+<td class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant">14 Sep 2023</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-1.5 text-emerald-400">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[12px] font-semibold">Aktif</span>
+</div>
+</td>
+<td class="px-6 py-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 bg-surface-variant/10 border-t border-outline-variant flex items-center justify-between">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+                    Menampilkan <span class="text-on-surface font-semibold">1-5</span> dari <span class="text-on-surface font-semibold">1.240</span> Mahasiswa
+                </p>
+<div class="flex items-center gap-2">
+<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant opacity-50 cursor-not-allowed">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex items-center gap-1">
+<button class="w-8 h-8 rounded-lg bg-primary text-on-primary font-semibold flex items-center justify-center text-sm">1</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-variant text-on-surface-variant font-semibold flex items-center justify-center text-sm">2</button>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-variant text-on-surface-variant font-semibold flex items-center justify-center text-sm">3</button>
+<span class="text-on-surface-variant mx-1">...</span>
+<button class="w-8 h-8 rounded-lg hover:bg-surface-variant text-on-surface-variant font-semibold flex items-center justify-center text-sm">248</button>
+</div>
+<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">groups</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Total Mahasiswa</p>
+<p class="font-headline-md text-headline-md text-on-surface">1.240</p>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">face</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Biometrik Aktif</p>
+<p class="font-headline-md text-headline-md text-on-surface">1.185</p>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person_off</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pending Aktivasi</p>
+<p class="font-headline-md text-headline-md text-on-surface">55</p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

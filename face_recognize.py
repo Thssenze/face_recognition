@@ -107,6 +107,26 @@ def mulai_pengenalan():
     COOLDOWN_FRAME = 60      # ~2 detik pada 30fps
     frame_count    = 0
 
+    # ============================================================
+    # TAMBAHAN: Dictionary untuk mapping label model -> user_id DB
+    # ============================================================
+    # Load mapping dari file yang dibuat saat training
+    label_map_path = MODEL_PATH.replace('.yml', '_labels.npy')
+    id_map_path = MODEL_PATH.replace('.yml', '_ids.npy')
+    
+    label_to_user_id = {}
+    if os.path.exists(label_map_path) and os.path.exists(id_map_path):
+        labels = np.load(label_map_path, allow_pickle=True).item()
+        ids = np.load(id_map_path, allow_pickle=True).item()
+        # labels: {folder_name: label_number}
+        # ids: {folder_name: user_id_database}
+        for folder, label_num in labels.items():
+            label_to_user_id[label_num] = ids[folder]
+        print(f"[OK] Mapping label dimuat: {label_to_user_id}")
+    else:
+        print("[WARN] File mapping tidak ditemukan. Menggunakan prediksi langsung.")
+        print("[WARN] Pastikan train_model.py menyimpan mapping label!")
+
     while True:
         ret, frame = cam.read()
         if not ret:
@@ -127,12 +147,24 @@ def mulai_pengenalan():
             wajah_roi = gray[y:y+h, x:x+w]
 
             # Prediksi identitas
-            user_id, confidence = recognizer.predict(wajah_roi)
+            label_pred, confidence = recognizer.predict(wajah_roi)
+
+            # ============================================================
+            # PERBAIKAN PENTING: Konversi label model ke user_id database
+            # ============================================================
+            user_id = label_to_user_id.get(label_pred, label_pred)
+            
+            # Log untuk debugging
+            print(f"[DEBUG] Label prediksi: {label_pred}, User ID: {user_id}, Confidence: {confidence:.2f}")
 
             if confidence < CONFIDENCE_THRESHOLD:
                 # ── WAJAH DIKENALI ──────────────────────────
                 user = get_user_by_id(user_id)
-                if user:
+                
+                # ============================================================
+                # PERBAIKAN: Validasi user ditemukan dan confidence cukup rendah
+                # ============================================================
+                if user and confidence < CONFIDENCE_THRESHOLD:
                     nama = user['nama']
                     nim  = user['nim']
 
@@ -152,6 +184,14 @@ def mulai_pengenalan():
                     label = f"{nama} ({confidence:.0f})"
                     cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 200, 0), 2)
                     cv2.rectangle(frame, (x, y-35), (x+w, y), (0, 200, 0), -1)
+                    cv2.putText(frame, label, (x+5, y-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                
+                else:
+                    # User tidak ditemukan di database
+                    label = f"ID {user_id} tidak terdaftar ({confidence:.0f})"
+                    cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 165, 255), 2)
+                    cv2.rectangle(frame, (x, y-35), (x+w, y), (0, 165, 255), -1)
                     cv2.putText(frame, label, (x+5, y-10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 

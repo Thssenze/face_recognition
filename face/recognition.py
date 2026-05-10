@@ -1,0 +1,158 @@
+# face/recognition.py — Engine LBPH: predict wajah, load model
+# Digunakan oleh dashboard saat kamera aktif untuk mengenali mahasiswa
+
+import cv2
+import os
+import numpy as np
+from config import MODEL_PATH, CONFIDENCE_THRESHOLD
+
+
+# Haar Cascade untuk deteksi wajah
+_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+_face_cascade = cv2.CascadeClassifier(_cascade_path)
+
+# LBPH Recognizer — dimuat saat pertama kali dibutuhkan
+_recognizer = None
+
+
+def _load_recognizer():
+    """Muat model LBPH dari file. Dipanggil otomatis saat predict."""
+    global _recognizer
+    if not os.path.exists(MODEL_PATH):
+        print('[RECOGNITION] Model belum ada. Jalankan training terlebih dahulu.')
+        return False
+    _recognizer = cv2.face.LBPHFaceRecognizer_create()
+    _recognizer.read(MODEL_PATH)
+    print(f'[RECOGNITION] Model berhasil dimuat dari {MODEL_PATH}')
+    return True
+
+
+def reload_model():
+    """Muat ulang model setelah re-training.
+    Dipanggil setelah background training selesai agar predict pakai model terbaru.
+    """
+    global _recognizer
+    _recognizer = None
+    return _load_recognizer()
+
+
+def detect_faces(frame):
+    """Deteksi semua wajah dalam frame.
+    
+    Args:
+        frame: numpy array BGR dari OpenCV (atau grayscale)
+    
+    Returns:
+        List of (x, y, w, h) untuk setiap wajah terdeteksi
+    """
+    if len(frame.shape) == 3:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = frame
+
+    faces = _face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.3,
+        minNeighbors=5,
+        minSize=(80, 80)
+    )
+    return faces
+
+
+def predict(frame):
+    """Kenali wajah dalam frame menggunakan model LBPH.
+    
+    Args:
+        frame: numpy array BGR dari OpenCV
+    
+    Returns:
+        List of dict: [{'user_id': int, 'confidence': float, 'bbox': (x,y,w,h)}]
+        confidence rendah = lebih mirip. Threshold < 70 = dikenali.
+        Return list kosong jika tidak ada wajah atau model belum dimuat.
+    """
+    global _recognizer
+
+    # Muat model jika belum
+    if _recognizer is None:
+        if not _load_recognizer():
+            return []
+
+    # Konversi ke grayscale
+    if len(frame.shape) == 3:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = frame.copy()
+
+    # Deteksi wajah
+    faces = detect_faces(gray)
+    if len(faces) == 0:
+        return []
+
+    hasil = []
+    for (x, y, w, h) in faces:
+        # Crop dan resize wajah sesuai ukuran training (200x200)
+        face_roi = gray[y:y+h, x:x+w]
+        face_roi = cv2.resize(face_roi, (200, 200))
+
+        # Predict dengan LBPH
+        user_id, confidence = _recognizer.predict(face_roi)
+
+        hasil.append({
+            'user_id': user_id,
+            'confidence': round(confidence, 2),
+            'bbox': (int(x), int(y), int(w), int(h)),
+            'dikenali': confidence < CONFIDENCE_THRESHOLD
+        })
+
+    return hasil
+
+
+def predict_single(frame):
+    """Kenali satu wajah utama (confidence terbaik) dalam frame.
+    
+    Returns:
+        dict {'user_id': int, 'confidence': float, 'bbox': tuple, 'dikenali': bool}
+        atau None jika tidak ada wajah.
+    """
+    results = predict(frame)
+    if not results:
+        return None
+
+    # Ambil yang confidence terkecil (paling mirip)
+    best = min(results, key=lambda r: r['confidence'])
+    return best
+
+
+def draw_prediction(frame, predictions):
+    """Gambar kotak dan label prediksi di atas frame.
+    
+    Args:
+        frame: numpy array BGR
+        predictions: list dari predict()
+    
+    Returns:
+        frame yang sudah ditandai
+    """
+    annotated = frame.copy()
+
+    for pred in predictions:
+        x, y, w, h = pred['bbox']
+        conf = pred['confidence']
+        uid = pred['user_id']
+        dikenali = pred['dikenali']
+
+        # Warna: hijau jika dikenali, merah jika tidak
+        color = (0, 255, 0) if dikenali else (0, 0, 255)
+        label = f"ID:{uid} ({conf:.0f})" if dikenali else f"Unknown ({conf:.0f})"
+
+        # Gambar kotak wajah
+        cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+
+        # Label di atas kotak
+        label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+        cv2.rectangle(annotated, (x, y - label_size[1] - 10), 
+                      (x + label_size[0], y), color, -1)
+        cv2.putText(annotated, label, (x, y - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    return annotated

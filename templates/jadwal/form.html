@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}Tambah Jadwal - Sistem Absensi{% endblock %}
+
+{% block content %}
+<nav class="flex text-on-surface-variant font-label-caps text-label-caps mb-6">
+    <ol class="inline-flex items-center space-x-2">
+        <li><a class="hover:text-primary" href="{{ url_for('jadwal_index') }}">Jadwal</a></li>
+        <li><span class="material-symbols-outlined text-sm">chevron_right</span></li>
+        <li class="text-primary font-bold">Tambah Jadwal</li>
+    </ol>
+</nav>
+
+<div class="max-w-lg">
+    <h2 class="font-headline-md text-headline-md text-on-surface mb-2">Tambah Jadwal Baru</h2>
+    <p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Batas terlambat otomatis dihitung: jam_mulai + 15 menit.</p>
+
+    {% if error %}
+    <div class="bg-error-container/20 border border-error/30 rounded-lg p-3 mb-6 flex items-center gap-2">
+        <span class="material-symbols-outlined text-error text-[18px]">error</span>
+        <span class="font-body-sm text-body-sm text-on-error-container">{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <form method="POST" class="space-y-6">
+        <div class="space-y-2">
+            <label class="font-label-caps text-label-caps text-on-surface-variant" for="matakuliah_id">MATA KULIAH</label>
+            <select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
+                    id="matakuliah_id" name="matakuliah_id" required>
+                <option value="">-- Pilih Mata Kuliah --</option>
+                {% for mk in daftar_mk %}
+                <option value="{{ mk.id }}" {% if request.form.get('matakuliah_id')|int == mk.id %}selected{% endif %}>
+                    {{ mk.nama_mk }} ({{ mk.kode_mk }}) - {{ mk.nama_kelas }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="space-y-2">
+            <label class="font-label-caps text-label-caps text-on-surface-variant" for="hari">HARI</label>
+            <select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
+                    id="hari" name="hari" required>
+                <option value="">-- Pilih Hari --</option>
+                {% for h in ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'] %}
+                <option value="{{ h }}" {% if request.form.get('hari') == h %}selected{% endif %}>{{ h }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant" for="jam_mulai">JAM MULAI</label>
+                <input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
+                       id="jam_mulai" name="jam_mulai" type="time" value="{{ request.form.get('jam_mulai', '') }}" required/>
+            </div>
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant" for="jam_selesai">JAM SELESAI</label>
+                <input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
+                       id="jam_selesai" name="jam_selesai" type="time" value="{{ request.form.get('jam_selesai', '') }}" required/>
+            </div>
+        </div>
+        <div class="flex gap-3 pt-4">
+            <button type="submit" class="bg-primary-container text-on-primary-container px-6 py-3 rounded-lg font-title-sm flex items-center gap-2 hover:brightness-110 transition-all">
+                <span class="material-symbols-outlined">save</span> Tambah Jadwal
+            </button>
+            <a href="{{ url_for('jadwal_index') }}" class="px-6 py-3 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-variant transition-colors font-title-sm">Batal</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

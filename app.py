@@ -1,383 +1,528 @@
-# app.py — Flask Server: Dashboard Lengkap + API
+# app.py — Entry point Flask, semua route
+# Komentar dalam Bahasa Indonesia sesuai konvensi (context.md bagian 12)
 
-from flask import Flask, request, jsonify, render_template_string, Response
+from flask import (Flask, request, jsonify, render_template,
+                   redirect, url_for, session, flash)
 from flask_cors import CORS
-from database import get_absensi_hari_ini, get_semua_user
-from config import FLASK_HOST, FLASK_PORT, FLASK_DEBUG, DB_CONFIG
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 from datetime import datetime, date
-import mysql.connector
-import csv, io
+import os
+import database as db
+from config import (FLASK_HOST, FLASK_PORT, FLASK_SECRET_KEY,
+                    SNAPSHOT_PATH, TOLERANSI_MENIT, DATASET_PATH)
 
+# ── Inisialisasi Flask ────────────────────────────────────────
 app = Flask(__name__)
+app.secret_key = FLASK_SECRET_KEY
 CORS(app)
 
-log_absensi = []
 
-# ── HELPER DATABASE TAMBAHAN ──────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════
+# DECORATOR: login_required
+# Semua route kecuali /login dan /register wajib pakai ini
+# ══════════════════════════════════════════════════════════════
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'admin_id' not in session:
+            flash('Silakan login terlebih dahulu.', 'error')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated
 
-def get_absensi_by_tanggal(tgl):
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT * FROM absensi WHERE tanggal = %s ORDER BY waktu DESC", (tgl,)
-    )
-    hasil = cursor.fetchall()
-    cursor.close(); conn.close()
-    return hasil
 
-def get_absensi_by_range(tgl_mulai, tgl_akhir):
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT * FROM absensi WHERE tanggal BETWEEN %s AND %s ORDER BY tanggal DESC, waktu DESC",
-        (tgl_mulai, tgl_akhir)
-    )
-    hasil = cursor.fetchall()
-    cursor.close(); conn.close()
-    return hasil
+# ══════════════════════════════════════════════════════════════
+# AUTH: Login, Register, Logout
+# ══════════════════════════════════════════════════════════════
 
-def hapus_user(user_id):
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM absensi WHERE user_id = %s", (user_id,))
-    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    conn.commit()
-    cursor.close(); conn.close()
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Halaman login admin."""
+    # Jika sudah login, langsung ke dashboard
+    if 'admin_id' in session:
+        return redirect(url_for('dashboard'))
 
-def get_statistik():
-    conn = mysql.connector.connect(**DB_CONFIG)
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT tanggal, COUNT(*) as jumlah
-        FROM absensi
-        WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-        GROUP BY tanggal ORDER BY tanggal ASC
-    """)
-    per_hari = cursor.fetchall()
-    cursor.execute("SELECT COUNT(*) as total FROM absensi")
-    total = cursor.fetchone()['total']
-    cursor.close(); conn.close()
-    return per_hari, total
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
 
-# ── CSS & JS BERSAMA ──────────────────────────────────────────────────────────
+        if not username or not password:
+            error = 'Username dan password wajib diisi.'
+        else:
+            admin = db.get_admin_by_username(username)
+            if admin and check_password_hash(admin['password_hash'], password):
+                # Login berhasil — simpan ke session
+                session['admin_id'] = admin['id']
+                session['username'] = admin['username']
+                flash('Login berhasil!', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                error = 'Username atau password salah.'
 
-COMMON_STYLE = """
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
-  a{color:inherit;text-decoration:none}
-  .header{background:#1e293b;padding:1rem 2rem;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between}
-  .header h1{font-size:1.1rem;font-weight:700;color:#f1f5f9}
-  .live{background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;border-radius:20px;font-size:11px;padding:3px 10px}
-  .nav{background:#1e293b;border-bottom:1px solid #334155;display:flex;padding:0 2rem}
-  .nav a{padding:.75rem 1.25rem;font-size:13px;color:#64748b;border-bottom:2px solid transparent;transition:.2s;display:block}
-  .nav a:hover,.nav a.active{color:#38bdf8;border-bottom-color:#38bdf8}
-  .container{max-width:1000px;margin:2rem auto;padding:0 1.5rem}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem}
-  .stat{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1.2rem}
-  .stat .num{font-size:1.8rem;font-weight:700;color:#38bdf8}
-  .stat .lbl{font-size:12px;color:#64748b;margin-top:4px}
-  .chart{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1.2rem;margin-bottom:2rem}
-  .chart-title{font-size:13px;color:#64748b;margin-bottom:1rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-  .bars{display:flex;align-items:flex-end;gap:8px;height:90px}
-  .bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-  .bar{width:100%;background:#38bdf855;border-radius:4px 4px 0 0;min-height:4px}
-  .bar-lbl{font-size:10px;color:#475569}
-  .bar-num{font-size:11px;color:#38bdf8;font-weight:600}
-  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;overflow:hidden;margin-bottom:1.5rem}
-  .card-head{padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #334155}
-  .card-head h2{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em}
-  table{width:100%;border-collapse:collapse}
-  th{background:#0f172a;color:#475569;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:.7rem 1rem;text-align:left}
-  td{padding:.8rem 1rem;font-size:13px;border-bottom:1px solid #0f172a}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:#ffffff08}
-  .badge-ok{background:#22c55e22;color:#22c55e;border:1px solid #22c55e44;border-radius:20px;font-size:11px;padding:2px 8px}
-  .btn{display:inline-block;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:.2s;text-decoration:none}
-  .btn-blue{background:#38bdf822;color:#38bdf8;border:1px solid #38bdf844}
-  .btn-blue:hover{background:#38bdf833}
-  .btn-green{background:#22c55e22;color:#22c55e;border:1px solid #22c55e44}
-  .btn-green:hover{background:#22c55e33}
-  .btn-red{background:#ef444422;color:#ef4444;border:1px solid #ef444444}
-  .btn-red:hover{background:#ef444433}
-  .filter{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1.5rem}
-  .filter input,.filter select{background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:6px 12px;border-radius:8px;font-size:13px}
-  .filter input:focus{outline:none;border-color:#38bdf8}
-  .empty{text-align:center;color:#334155;padding:3rem;font-size:14px;line-height:1.8}
-  .empty code{background:#1e293b;color:#38bdf8;padding:2px 8px;border-radius:4px}
-  .modal-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:100;align-items:center;justify-content:center}
-  .modal-overlay.show{display:flex}
-  .modal{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:1.5rem;width:380px;max-width:90vw}
-  .modal h3{font-size:15px;font-weight:700;margin-bottom:.75rem}
-  .modal p{font-size:13px;color:#94a3b8;margin-bottom:1.5rem;line-height:1.6}
-  .modal-actions{display:flex;gap:.75rem;justify-content:flex-end}
-  .info-box{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:1.2rem;margin-bottom:1rem;font-size:13px;color:#64748b;line-height:1.8}
-  .info-box code{background:#0f172a;color:#38bdf8;padding:2px 6px;border-radius:4px}
-  .refresh-note{font-size:11px;color:#334155;text-align:right;margin-top:1rem}
-</style>
-"""
+    # Tampilkan link register hanya jika belum ada admin sama sekali
+    show_register = (db.hitung_admin() == 0)
 
-COMMON_MODAL = """
-<div class="modal-overlay" id="modalHapus">
-  <div class="modal">
-    <h3>⚠️ Konfirmasi Hapus</h3>
-    <p>Apakah Anda yakin ingin menghapus user ini?<br>
-    Seluruh data absensi user ini juga akan terhapus dan <strong>tidak dapat dikembalikan</strong>.</p>
-    <div class="modal-actions">
-      <button class="btn btn-blue" onclick="tutupModal()">Batal</button>
-      <button class="btn btn-red" id="btnHapusKonfirm">Ya, Hapus</button>
-    </div>
-  </div>
-</div>
-<script>
-  let hapusTargetId = null;
-  function konfirmasiHapus(userId) {
-    hapusTargetId = userId;
-    document.getElementById('modalHapus').classList.add('show');
-  }
-  function tutupModal() {
-    document.getElementById('modalHapus').classList.remove('show');
-  }
-  document.getElementById('btnHapusKonfirm').onclick = function() {
-    if (hapusTargetId) {
-      fetch('/api/hapus-user/' + hapusTargetId, {method:'DELETE'})
-        .then(r => r.json())
-        .then(() => location.reload());
-    }
-  }
-</script>
-"""
+    return render_template('login.html', error=error, show_register=show_register)
 
-def nav_html(active):
-    tabs = [('/', 'hari_ini', 'Hari Ini'),
-            ('/laporan', 'laporan', 'Laporan'),
-            ('/users', 'users', 'Manajemen User')]
-    links = ''.join(
-        f'<a href="{url}" class="{"active" if key == active else ""}">{label}</a>'
-        for url, key, label in tabs
-    )
-    return f"""
-    <!DOCTYPE html><html lang="id"><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Dashboard Absensi</title>
-    {COMMON_STYLE}
-    </head><body>
-    <div class="header">
-      <h1>📋 Sistem Absensi Face Recognition</h1>
-      <span class="live">● LIVE</span>
-    </div>
-    <div class="nav">{links}</div>
-    <div class="container">
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """Halaman register admin pertama.
+    Hanya bisa diakses jika tabel admin masih kosong (0 record).
+    Jika sudah ada admin, redirect ke /login.
     """
+    # Cek apakah sudah ada admin
+    if db.hitung_admin() > 0:
+        flash('Admin sudah terdaftar. Silakan login.', 'error')
+        return redirect(url_for('login'))
 
-# ── ROUTES ────────────────────────────────────────────────────────────────────
+    error = None
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        confirm  = request.form.get('confirm_password', '')
+
+        # Validasi input
+        if not username or not password:
+            error = 'Username dan password wajib diisi.'
+        elif len(password) < 8:
+            error = 'Password minimal 8 karakter.'
+        elif password != confirm:
+            error = 'Konfirmasi password tidak cocok.'
+        else:
+            # Hash password dan simpan
+            hashed = generate_password_hash(password)
+            admin_id = db.tambah_admin(username, hashed)
+            if admin_id:
+                # Langsung login setelah register
+                session['admin_id'] = admin_id
+                session['username'] = username
+                flash('Akun admin berhasil dibuat!', 'success')
+                return redirect(url_for('dashboard'))
+            else:
+                error = 'Gagal membuat akun. Username mungkin sudah dipakai.'
+
+    return render_template('register_admin.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    """Logout admin — hapus session."""
+    session.clear()
+    flash('Anda telah logout.', 'success')
+    return redirect(url_for('login'))
+
+
+# ══════════════════════════════════════════════════════════════
+# DASHBOARD
+# ══════════════════════════════════════════════════════════════
 
 @app.route('/')
+@login_required
 def dashboard():
-    absensi = get_absensi_hari_ini()
-    semua_user = get_semua_user()
-    per_hari, total_semua = get_statistik()
+    """Halaman utama dashboard."""
+    statistik = db.get_statistik_dashboard()
+    absensi = db.get_absensi_hari_ini()
+    return render_template('dashboard.html',
+                           active_page='dashboard',
+                           statistik=statistik,
+                           absensi_hari_ini=absensi)
 
-    # Hitung tinggi bar chart
-    maks = max((h['jumlah'] for h in per_hari), default=1)
-    bars_html = ''
-    for h in per_hari:
-        tinggi = max(int(h['jumlah'] / maks * 70), 4)
-        tgl_fmt = h['tanggal'].strftime('%d/%m') if hasattr(h['tanggal'], 'strftime') else str(h['tanggal'])
-        bars_html += f"""
-        <div class="bar-wrap">
-          <div class="bar-num">{h['jumlah']}</div>
-          <div class="bar" style="height:{tinggi}px"></div>
-          <div class="bar-lbl">{tgl_fmt}</div>
-        </div>"""
 
-    if not bars_html:
-        bars_html = '<div style="color:#334155;font-size:13px;margin:auto">Belum ada data</div>'
+# ══════════════════════════════════════════════════════════════
+# MANAJEMEN KELAS
+# ══════════════════════════════════════════════════════════════
 
-    rows_html = ''
-    for i, row in enumerate(absensi, 1):
-        rows_html += f"""
-        <tr>
-          <td>{i}</td><td>{row['nama']}</td><td>{row['nim']}</td>
-          <td>{row['waktu']}</td>
-          <td><span class="badge-ok">✓ Hadir</span></td>
-        </tr>"""
+@app.route('/kelas')
+@login_required
+def kelas_index():
+    """Daftar semua kelas."""
+    daftar = db.get_semua_kelas()
+    # Tambahkan jumlah mahasiswa per kelas
+    for k in daftar:
+        k['jumlah_mhs'] = db.hitung_mahasiswa_per_kelas(k['id'])
+    return render_template('kelas/index.html',
+                           active_page='kelas', daftar_kelas=daftar)
 
-    tabel = f"""
-    <table>
-      <thead><tr><th>#</th><th>Nama</th><th>NIM</th><th>Waktu</th><th>Status</th></tr></thead>
-      <tbody>{rows_html}</tbody>
-    </table>""" if absensi else """
-    <div class="empty">Belum ada absensi hari ini.<br>
-    Jalankan <code>python face_recognize.py</code> untuk memulai.</div>"""
 
-    hari_ini = date.today().isoformat()
-    html = nav_html('hari_ini') + f"""
-    <div class="stats">
-      <div class="stat"><div class="num">{len(absensi)}</div><div class="lbl">Hadir Hari Ini</div></div>
-      <div class="stat"><div class="num">{len(semua_user)}</div><div class="lbl">Total Terdaftar</div></div>
-      <div class="stat"><div class="num">{total_semua}</div><div class="lbl">Total Absensi</div></div>
-      <div class="stat"><div class="num">{datetime.now().strftime("%H:%M")}</div><div class="lbl">Waktu Server</div></div>
-    </div>
-    <div class="chart">
-      <div class="chart-title">Kehadiran 7 Hari Terakhir</div>
-      <div class="bars">{bars_html}</div>
-    </div>
-    <div class="card">
-      <div class="card-head">
-        <h2>Rekap Kehadiran — {hari_ini}</h2>
-        <a href="/export-csv?tanggal={hari_ini}" class="btn btn-green">⬇ Export CSV</a>
-      </div>
-      {tabel}
-    </div>
-    <div class="refresh-note">Auto-refresh setiap 10 detik</div>
-    <meta http-equiv="refresh" content="10">
-    </div>{COMMON_MODAL}</body></html>"""
-    return html
+@app.route('/kelas/tambah', methods=['GET', 'POST'])
+@login_required
+def kelas_tambah():
+    """Tambah kelas baru."""
+    error = None
+    if request.method == 'POST':
+        nama = request.form.get('nama_kelas', '').strip()
+        angkatan = request.form.get('angkatan', '').strip()
+        if not nama or not angkatan:
+            error = 'Nama kelas dan angkatan wajib diisi.'
+        else:
+            hasil = db.tambah_kelas(nama, angkatan, session.get('admin_id'))
+            if hasil:
+                flash('Kelas berhasil ditambahkan!', 'success')
+                return redirect(url_for('kelas_index'))
+            error = 'Gagal menambahkan kelas.'
+    return render_template('kelas/form.html',
+                           active_page='kelas', kelas=None, error=error)
+
+
+@app.route('/kelas/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def kelas_edit(id):
+    """Edit kelas."""
+    kelas = db.get_kelas_by_id(id)
+    if not kelas:
+        flash('Kelas tidak ditemukan.', 'error')
+        return redirect(url_for('kelas_index'))
+    error = None
+    if request.method == 'POST':
+        nama = request.form.get('nama_kelas', '').strip()
+        angkatan = request.form.get('angkatan', '').strip()
+        if not nama or not angkatan:
+            error = 'Nama kelas dan angkatan wajib diisi.'
+        elif db.update_kelas(id, nama, angkatan):
+            flash('Kelas berhasil diperbarui!', 'success')
+            return redirect(url_for('kelas_index'))
+        else:
+            error = 'Gagal memperbarui kelas.'
+    return render_template('kelas/form.html',
+                           active_page='kelas', kelas=kelas, error=error)
+
+
+@app.route('/kelas/hapus/<int:id>', methods=['POST'])
+@login_required
+def kelas_hapus(id):
+    """Hapus kelas (CASCADE ke MK dan jadwal)."""
+    if db.hapus_kelas(id):
+        flash('Kelas berhasil dihapus.', 'success')
+    else:
+        flash('Gagal menghapus kelas. Mungkin masih ada mahasiswa terkait.', 'error')
+    return redirect(url_for('kelas_index'))
+
+
+@app.route('/kelas/<int:id>/matakuliah')
+@login_required
+def kelas_detail(id):
+    """Detail kelas + daftar matakuliah."""
+    kelas = db.get_kelas_by_id(id)
+    if not kelas:
+        flash('Kelas tidak ditemukan.', 'error')
+        return redirect(url_for('kelas_index'))
+    matakuliah = db.get_matakuliah_by_kelas(id)
+    jumlah_mhs = db.hitung_mahasiswa_per_kelas(id)
+    return render_template('kelas/detail.html',
+                           active_page='kelas', kelas=kelas,
+                           matakuliah=matakuliah, jumlah_mhs=jumlah_mhs)
+
+
+# ══════════════════════════════════════════════════════════════
+# MANAJEMEN MATAKULIAH
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/matakuliah/tambah', methods=['GET', 'POST'])
+@login_required
+def matakuliah_tambah():
+    """Tambah matakuliah baru."""
+    kelas_id_param = request.args.get('kelas_id', type=int)
+    kelas_asal = db.get_kelas_by_id(kelas_id_param) if kelas_id_param else None
+    error = None
+    if request.method == 'POST':
+        nama = request.form.get('nama_mk', '').strip()
+        kode = request.form.get('kode_mk', '').strip()
+        kid  = request.form.get('kelas_id', type=int)
+        sks  = request.form.get('sks', 2, type=int)
+        if not nama or not kode or not kid:
+            error = 'Semua field wajib diisi.'
+        else:
+            hasil = db.tambah_matakuliah(nama, kode, kid, sks)
+            if hasil:
+                flash('Mata kuliah berhasil ditambahkan!', 'success')
+                return redirect(url_for('kelas_detail', id=kid))
+            error = 'Gagal menambahkan. Kode MK mungkin sudah dipakai.'
+    return render_template('matakuliah/form.html', active_page='kelas',
+                           mk=None, kelas_asal=kelas_asal,
+                           daftar_kelas=db.get_semua_kelas(), error=error)
+
+
+@app.route('/matakuliah/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def matakuliah_edit(id):
+    """Edit matakuliah."""
+    mk = db.get_matakuliah_by_id(id)
+    if not mk:
+        flash('Matakuliah tidak ditemukan.', 'error')
+        return redirect(url_for('kelas_index'))
+    kelas_asal = db.get_kelas_by_id(mk['kelas_id'])
+    error = None
+    if request.method == 'POST':
+        nama = request.form.get('nama_mk', '').strip()
+        kode = request.form.get('kode_mk', '').strip()
+        kid  = request.form.get('kelas_id', type=int)
+        sks  = request.form.get('sks', 2, type=int)
+        if db.update_matakuliah(id, nama, kode, kid, sks):
+            flash('Mata kuliah berhasil diperbarui!', 'success')
+            return redirect(url_for('kelas_detail', id=kid))
+        error = 'Gagal memperbarui. Kode MK mungkin sudah dipakai.'
+    return render_template('matakuliah/form.html', active_page='kelas',
+                           mk=mk, kelas_asal=kelas_asal,
+                           daftar_kelas=db.get_semua_kelas(), error=error)
+
+
+@app.route('/matakuliah/hapus/<int:id>', methods=['POST'])
+@login_required
+def matakuliah_hapus(id):
+    """Hapus matakuliah (CASCADE ke jadwal)."""
+    mk = db.get_matakuliah_by_id(id)
+    kelas_id = mk['kelas_id'] if mk else None
+    if db.hapus_matakuliah(id):
+        flash('Mata kuliah berhasil dihapus.', 'success')
+    else:
+        flash('Gagal menghapus mata kuliah.', 'error')
+    return redirect(url_for('kelas_detail', id=kelas_id) if kelas_id
+                    else url_for('kelas_index'))
+
+
+# ══════════════════════════════════════════════════════════════
+# MANAJEMEN JADWAL
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/jadwal')
+@login_required
+def jadwal_index():
+    """Daftar semua jadwal."""
+    return render_template('jadwal/index.html', active_page='jadwal',
+                           daftar_jadwal=db.get_semua_jadwal())
+
+
+@app.route('/jadwal/tambah', methods=['GET', 'POST'])
+@login_required
+def jadwal_tambah():
+    """Tambah jadwal baru."""
+    error = None
+    if request.method == 'POST':
+        mk_id       = request.form.get('matakuliah_id', type=int)
+        hari         = request.form.get('hari', '').strip()
+        jam_mulai    = request.form.get('jam_mulai', '').strip()
+        jam_selesai  = request.form.get('jam_selesai', '').strip()
+        if not mk_id or not hari or not jam_mulai or not jam_selesai:
+            error = 'Semua field wajib diisi.'
+        else:
+            # batas_terlambat dihitung otomatis di database.py
+            hasil = db.tambah_jadwal(mk_id, hari, jam_mulai, jam_selesai)
+            if hasil:
+                flash('Jadwal berhasil ditambahkan!', 'success')
+                return redirect(url_for('jadwal_index'))
+            error = 'Gagal menambahkan jadwal.'
+    return render_template('jadwal/form.html', active_page='jadwal',
+                           daftar_mk=db.get_semua_matakuliah(), error=error)
+
+
+@app.route('/jadwal/hapus/<int:id>', methods=['POST'])
+@login_required
+def jadwal_hapus(id):
+    """Hapus jadwal."""
+    if db.hapus_jadwal(id):
+        flash('Jadwal berhasil dihapus.', 'success')
+    else:
+        flash('Gagal menghapus jadwal.', 'error')
+    return redirect(url_for('jadwal_index'))
+
+
+# ══════════════════════════════════════════════════════════════
+# MANAJEMEN MAHASISWA
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/mahasiswa')
+@login_required
+def mahasiswa_index():
+    """Daftar semua mahasiswa."""
+    filter_kelas = request.args.get('kelas_id', type=int)
+    if filter_kelas:
+        daftar = db.get_users_by_kelas(filter_kelas)
+    else:
+        daftar = db.get_semua_user()
+    # Hitung foto per mahasiswa untuk status biometrik
+    for m in daftar:
+        folder = os.path.join(DATASET_PATH, str(m['id']))
+        if os.path.isdir(folder):
+            m['foto_count'] = len([f for f in os.listdir(folder) if f.endswith('.jpg')])
+        else:
+            m['foto_count'] = 0
+    total_mhs = len(db.get_semua_user())
+    bio_aktif = sum(1 for m in db.get_semua_user()
+                    if os.path.isdir(os.path.join(DATASET_PATH, str(m['id'])))
+                    and len(os.listdir(os.path.join(DATASET_PATH, str(m['id'])))) > 0)
+    return render_template('mahasiswa/index.html', active_page='mahasiswa',
+                           daftar_mahasiswa=daftar,
+                           daftar_kelas=db.get_semua_kelas(),
+                           filter_kelas=filter_kelas,
+                           total_mhs=total_mhs, bio_aktif=bio_aktif)
+
+
+@app.route('/mahasiswa/register', methods=['GET', 'POST'])
+@login_required
+def mahasiswa_register():
+    """Form registrasi mahasiswa baru (data + foto kamera)."""
+    error = None
+    return render_template('mahasiswa/register.html', active_page='mahasiswa',
+                           daftar_kelas=db.get_semua_kelas(), error=error)
+
+
+@app.route('/mahasiswa/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def mahasiswa_edit(id):
+    """Edit data mahasiswa."""
+    mhs = db.get_user_by_id(id)
+    if not mhs:
+        flash('Mahasiswa tidak ditemukan.', 'error')
+        return redirect(url_for('mahasiswa_index'))
+    error = None
+    if request.method == 'POST':
+        nama = request.form.get('nama', '').strip()
+        nim  = request.form.get('nim', '').strip()
+        kid  = request.form.get('kelas_id', type=int)
+        if not nama or not nim or not kid:
+            error = 'Semua field wajib diisi.'
+        elif db.update_user(id, nama, nim, kid):
+            flash('Data mahasiswa berhasil diperbarui!', 'success')
+            return redirect(url_for('mahasiswa_index'))
+        else:
+            error = 'Gagal memperbarui. NIM mungkin sudah dipakai.'
+    return render_template('mahasiswa/edit.html', active_page='mahasiswa',
+                           mhs=mhs, daftar_kelas=db.get_semua_kelas(), error=error)
+
+
+@app.route('/mahasiswa/hapus/<int:id>', methods=['POST'])
+@login_required
+def mahasiswa_hapus(id):
+    """Hapus mahasiswa + folder dataset foto."""
+    mhs = db.get_user_by_id(id)
+    if db.hapus_user(id):
+        # Hapus folder foto dataset jika ada
+        if mhs:
+            folder = os.path.join(DATASET_PATH, str(id))
+            if os.path.isdir(folder):
+                import shutil
+                shutil.rmtree(folder, ignore_errors=True)
+        flash('Mahasiswa berhasil dihapus.', 'success')
+    else:
+        flash('Gagal menghapus mahasiswa.', 'error')
+    return redirect(url_for('mahasiswa_index'))
+
+
+# ══════════════════════════════════════════════════════════════
+# PLACEHOLDER — akan diimplementasi tahap selanjutnya
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/absensi/rekap')
+@login_required
+def absensi_rekap():
+    """Rekap absensi."""
+    return render_template('dashboard.html', active_page='rekap',
+                           statistik=db.get_statistik_dashboard(),
+                           absensi_hari_ini=[])
 
 
 @app.route('/laporan')
-def laporan():
-    dari   = request.args.get('dari',   date.today().isoformat())
-    sampai = request.args.get('sampai', date.today().isoformat())
-    absensi = get_absensi_by_range(dari, sampai)
-
-    rows_html = ''
-    for i, row in enumerate(absensi, 1):
-        rows_html += f"""
-        <tr>
-          <td>{i}</td><td>{row['tanggal']}</td><td>{row['nama']}</td>
-          <td>{row['nim']}</td><td>{row['waktu']}</td>
-          <td><span class="badge-ok">✓ Hadir</span></td>
-        </tr>"""
-
-    tabel = f"""
-    <table>
-      <thead><tr><th>#</th><th>Tanggal</th><th>Nama</th><th>NIM</th><th>Waktu</th><th>Status</th></tr></thead>
-      <tbody>{rows_html}</tbody>
-    </table>""" if absensi else """
-    <div class="empty">Tidak ada data pada rentang tanggal tersebut.</div>"""
-
-    html = nav_html('laporan') + f"""
-    <form method="GET" action="/laporan">
-      <div class="filter">
-        <label style="font-size:13px;color:#64748b">Dari:</label>
-        <input type="date" name="dari" value="{dari}">
-        <label style="font-size:13px;color:#64748b">Sampai:</label>
-        <input type="date" name="sampai" value="{sampai}">
-        <button type="submit" class="btn btn-blue">Tampilkan</button>
-        <a href="/export-csv?dari={dari}&sampai={sampai}" class="btn btn-green">⬇ Export CSV</a>
-      </div>
-    </form>
-    <div class="card">
-      <div class="card-head">
-        <h2>Laporan: {dari} s/d {sampai}</h2>
-        <span style="font-size:12px;color:#64748b">{len(absensi)} record</span>
-      </div>
-      {tabel}
-    </div>
-    </div>{COMMON_MODAL}</body></html>"""
-    return html
+@login_required
+def laporan_index():
+    """Laporan kehadiran."""
+    return render_template('dashboard.html', active_page='laporan',
+                           statistik=db.get_statistik_dashboard(),
+                           absensi_hari_ini=[])
 
 
-@app.route('/users')
-def halaman_users():
-    users = get_semua_user()
+# ══════════════════════════════════════════════════════════════
+# API ENDPOINTS
+# ══════════════════════════════════════════════════════════════
 
-    rows_html = ''
-    for u in users:
-        rows_html += f"""
-        <tr>
-          <td>{u['id']}</td><td>{u['nama']}</td><td>{u['nim']}</td>
-          <td>{u['created_at']}</td>
-          <td><button class="btn btn-red" onclick="konfirmasiHapus({u['id']})">🗑 Hapus</button></td>
-        </tr>"""
-
-    tabel = f"""
-    <table>
-      <thead><tr><th>ID</th><th>Nama</th><th>NIM</th><th>Terdaftar</th><th>Aksi</th></tr></thead>
-      <tbody>{rows_html}</tbody>
-    </table>""" if users else """
-    <div class="empty">Belum ada user terdaftar.</div>"""
-
-    html = nav_html('users') + f"""
-    <div class="card">
-      <div class="card-head">
-        <h2>Daftar User Terdaftar</h2>
-        <span style="font-size:12px;color:#64748b">{len(users)} user</span>
-      </div>
-      {tabel}
-    </div>
-    <div class="info-box">
-      💡 <strong style="color:#94a3b8">Untuk menambah user baru:</strong>
-      Jalankan <code>python face_register.py</code> di CMD,
-      lalu <code>python train_model.py</code> untuk melatih ulang model.
-    </div>
-    </div>{COMMON_MODAL}</body></html>"""
-    return html
-
-
-@app.route('/export-csv')
-def export_csv():
-    tanggal = request.args.get('tanggal')
-    dari    = request.args.get('dari',   date.today().isoformat())
-    sampai  = request.args.get('sampai', date.today().isoformat())
-
-    if tanggal:
-        data     = get_absensi_by_tanggal(tanggal)
-        filename = f"absensi_{tanggal}.csv"
-    else:
-        data     = get_absensi_by_range(dari, sampai)
-        filename = f"absensi_{dari}_sd_{sampai}.csv"
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(['No', 'Nama', 'NIM', 'Tanggal', 'Waktu'])
-    for i, row in enumerate(data, 1):
-        writer.writerow([i, row['nama'], row['nim'], row['tanggal'], row['waktu']])
-
-    output.seek(0)
-    return Response(
-        output.getvalue(),
-        mimetype='text/csv',
-        headers={'Content-Disposition': f'attachment; filename={filename}'}
-    )
-
-
-@app.route('/api/hapus-user/<int:user_id>', methods=['DELETE'])
-def api_hapus_user(user_id):
-    hapus_user(user_id)
-    return jsonify({'status': 'ok'})
-
-
-@app.route('/api/hasil-absensi', methods=['POST'])
-def hasil_absensi():
-    data = request.get_json()
-    if data:
-        data['timestamp'] = datetime.now().strftime("%H:%M:%S")
-        log_absensi.insert(0, data)
-        if len(log_absensi) > 50:
-            log_absensi.pop()
-    return jsonify({'status': 'ok'})
-
-
-@app.route('/api/absensi-hari-ini', methods=['GET'])
+@app.route('/api/absensi/hari-ini')
+@login_required
 def api_absensi_hari_ini():
-    return jsonify(get_absensi_hari_ini())
+    """Data absensi hari ini dalam format JSON."""
+    data = db.get_absensi_hari_ini()
+    return jsonify({'status': 'ok', 'data': data, 'pesan': None})
 
 
-@app.route('/api/users', methods=['GET'])
-def api_users():
-    return jsonify(get_semua_user())
+@app.route('/api/foto/upload', methods=['POST'])
+@login_required
+def api_foto_upload():
+    """Terima foto wajah via AJAX (base64) dan simpan ke dataset/."""
+    import base64
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'pesan': 'Data tidak valid.'}), 400
+
+    nama     = data.get('nama', '').strip()
+    nim      = data.get('nim', '').strip()
+    kelas_id = data.get('kelas_id')
+    foto_b64 = data.get('foto', '')
+    index    = data.get('index', 0)
+
+    if not nama or not nim or not kelas_id or not foto_b64:
+        return jsonify({'status': 'error', 'pesan': 'Field tidak lengkap.'}), 400
+
+    try:
+        # Pastikan user sudah ada di DB, buat jika belum
+        user = db.get_user_by_nim(nim)
+        if not user:
+            user_id = db.tambah_user(nama, nim, int(kelas_id))
+            if not user_id:
+                return jsonify({'status': 'error', 'pesan': 'NIM sudah terdaftar atau gagal simpan.'}), 400
+        else:
+            user_id = user['id']
+
+        # Decode base64 → simpan ke dataset/{user_id}/
+        header, encoded = foto_b64.split(',', 1)
+        foto_bytes = base64.b64decode(encoded)
+
+        folder = os.path.join(DATASET_PATH, str(user_id))
+        os.makedirs(folder, exist_ok=True)
+
+        filepath = os.path.join(folder, f'{index}.jpg')
+        with open(filepath, 'wb') as f:
+            f.write(foto_bytes)
+
+        return jsonify({'status': 'ok', 'pesan': f'Foto {index} tersimpan.', 'data': {'user_id': user_id}})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'pesan': str(e)}), 500
 
 
-if __name__ == "__main__":
+@app.route('/api/training/start', methods=['POST'])
+@login_required
+def api_training_start():
+    """Mulai training LBPH di background thread."""
+    import threading
+
+    def run_training():
+        """Jalankan training di background."""
+        try:
+            from face.trainer import train_model
+            train_model()
+        except Exception as e:
+            print(f'[ERROR] Training gagal: {e}')
+
+    thread = threading.Thread(target=run_training, daemon=True)
+    thread.start()
+
+    return jsonify({
+        'status': 'ok',
+        'pesan': 'Training dimulai di background. Model akan diperbarui otomatis.',
+        'data': None
+    })
+
+
+# ══════════════════════════════════════════════════════════════
+# ENTRY POINT
+# ══════════════════════════════════════════════════════════════
+
+if __name__ == '__main__':
     print("=" * 45)
-    print("   FLASK SERVER — SISTEM ABSENSI")
+    print("   FLASK SERVER - SISTEM ABSENSI")
     print("=" * 45)
     print(f"\n[INFO] Dashboard : http://127.0.0.1:{FLASK_PORT}")
-    print(f"[INFO] Laporan   : http://127.0.0.1:{FLASK_PORT}/laporan")
-    print(f"[INFO] Users     : http://127.0.0.1:{FLASK_PORT}/users")
+    print(f"[INFO] Login     : http://127.0.0.1:{FLASK_PORT}/login")
     print(f"[INFO] Tekan Ctrl+C untuk menghentikan.\n")
-    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=FLASK_DEBUG)
+    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=True)

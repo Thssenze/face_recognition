@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="id"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Laporan Kehadiran - Biometric System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-dim": "#0f1418",
+                    "on-surface": "#dee3e8",
+                    "error": "#ffb4ab",
+                    "on-tertiary-fixed": "#2a1700",
+                    "on-background": "#dee3e8",
+                    "outline": "#87929a",
+                    "on-secondary-fixed-variant": "#3c475a",
+                    "surface-container-low": "#171c20",
+                    "outline-variant": "#3e484f",
+                    "on-secondary-container": "#aeb9d0",
+                    "primary-fixed-dim": "#7bd0ff",
+                    "on-tertiary-container": "#613b00",
+                    "tertiary": "#ffc176",
+                    "on-tertiary-fixed-variant": "#653e00",
+                    "background": "#0f1418",
+                    "surface-container-lowest": "#0a0f12",
+                    "error-container": "#93000a",
+                    "inverse-surface": "#dee3e8",
+                    "inverse-on-surface": "#2c3135",
+                    "on-primary-container": "#004965",
+                    "primary-fixed": "#c4e7ff",
+                    "secondary-fixed-dim": "#bcc7de",
+                    "primary": "#8ed5ff",
+                    "on-error-container": "#ffdad6",
+                    "on-primary": "#00354a",
+                    "surface-container": "#1b2024",
+                    "on-secondary-fixed": "#111c2d",
+                    "surface-container-high": "#252b2e",
+                    "secondary-container": "#3e495d",
+                    "surface": "#0f1418",
+                    "on-primary-fixed-variant": "#004c69",
+                    "surface-bright": "#343a3e",
+                    "tertiary-container": "#f1a02b",
+                    "on-error": "#690005",
+                    "inverse-primary": "#00668a",
+                    "surface-variant": "#303539",
+                    "on-tertiary": "#472a00",
+                    "tertiary-fixed": "#ffddb8",
+                    "tertiary-fixed-dim": "#ffb960",
+                    "primary-container": "#38bdf8",
+                    "on-primary-fixed": "#001e2c",
+                    "surface-tint": "#7bd0ff",
+                    "on-surface-variant": "#bdc8d1",
+                    "on-secondary": "#263143",
+                    "secondary-fixed": "#d8e3fb",
+                    "surface-container-highest": "#303539",
+                    "secondary": "#bcc7de"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "sidebar-width": "260px",
+                    "container-margin": "24px",
+                    "section-gap": "32px",
+                    "card-padding": "20px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "title-sm": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .custom-glass { backdrop-filter: blur(12px); }
+    </style>
+</head>
+<body class="bg-background text-on-background selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-[260px] bg-surface-container dark:bg-surface-container-low backdrop-blur-md bg-opacity-80 border-r border-outline-variant dark:border-outline-variant flex flex-col gap-4 py-8 px-4 z-50">
+<div class="mb-8 px-2">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary font-bold tracking-tight">Admin Panel</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Biometric System</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface text-on-surface-variant dark:text-on-surface-variant font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface text-on-surface-variant dark:text-on-surface-variant font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">group</span>
+                Mahasiswa
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface text-on-surface-variant dark:text-on-surface-variant font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">school</span>
+                Kelas &amp; MK
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface text-on-surface-variant dark:text-on-surface-variant font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+                Jadwal
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 dark:hover:bg-surface-variant/50 hover:text-on-surface text-on-surface-variant dark:text-on-surface-variant font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">assignment</span>
+                Rekap Absensi
+            </a>
+<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out text-primary dark:text-primary font-bold border-l-4 border-primary bg-primary-container/5 font-body-md text-body-md" href="#">
+<span class="material-symbols-outlined">assessment</span>
+                Laporan
+            </a>
+</nav>
+<div class="mt-auto pt-8 border-t border-outline-variant">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary">account_circle</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface font-bold">Admin Utama</p>
+<p class="text-[10px] text-on-surface-variant">Sistem Absensi</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-50 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant dark:border-outline-variant flex justify-between items-center h-16 px-gutter ml-auto">
+<div class="flex items-center gap-4 flex-1">
+<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary rounded-lg transition-all">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-lg pl-10 pr-4 py-2 text-on-surface placeholder:text-outline focus:ring-0" placeholder="Cari laporan..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<span class="font-title-sm text-title-sm font-bold text-on-surface">Attendance Management</span>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-[260px] pt-24 px-gutter pb-12">
+<!-- Header Controls -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-section-gap">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Laporan Kehadiran</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Analisis data statistik absensi mahasiswa periode berjalan.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex bg-surface-container-high rounded-lg p-1 border border-outline-variant">
+<button class="px-4 py-1.5 rounded-md bg-surface-variant text-on-surface text-sm font-medium">Bulan Ini</button>
+<button class="px-4 py-1.5 rounded-md text-on-surface-variant hover:text-on-surface text-sm font-medium transition-colors">Semester</button>
+<button class="px-4 py-1.5 rounded-md text-on-surface-variant hover:text-on-surface text-sm font-medium transition-colors">Tahun</button>
+</div>
+<button class="flex items-center gap-2 bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-bold hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-[20px]">print</span>
+                    Cetak Laporan
+                </button>
+</div>
+</div>
+<!-- Overview Section (Bento Grid Style) -->
+<div class="grid grid-cols-12 gap-gutter mb-section-gap">
+<!-- Overall Attendance Card -->
+<div class="col-span-12 lg:col-span-8 bg-surface-container-low border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-start mb-6">
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface">Overview Kehadiran</h3>
+<p class="text-sm text-on-surface-variant">Distribusi status seluruh fakultas</p>
+</div>
+<span class="material-symbols-outlined text-primary cursor-pointer">info</span>
+</div>
+<div class="flex flex-col md:flex-row items-center justify-around gap-12 py-6">
+<!-- Circular Chart Placeholder -->
+<div class="relative w-48 h-48 flex items-center justify-center">
+<svg class="w-full h-full -rotate-90 transform" viewbox="0 0 100 100">
+<!-- Background track -->
+<circle class="text-surface-container-highest" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-width="12"></circle>
+<!-- Success (Hadir) -->
+<circle class="text-primary-container" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="30" stroke-linecap="round" stroke-width="12"></circle>
+<!-- Warning (Izin/Sakit) -->
+<circle class="text-tertiary" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="200" stroke-linecap="round" stroke-width="12"></circle>
+<!-- Error (Alpa) -->
+<circle class="text-error" cx="50" cy="50" fill="transparent" r="40" stroke="currentColor" stroke-dasharray="251.2" stroke-dashoffset="230" stroke-linecap="round" stroke-width="12"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="text-3xl font-bold text-on-surface">88%</span>
+<span class="text-[10px] text-label-caps text-on-surface-variant tracking-widest uppercase">Target 95%</span>
+</div>
+</div>
+<!-- Chart Legend -->
+<div class="flex flex-col gap-4 w-full max-w-[240px]">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+<span class="text-sm text-on-surface">Hadir Tepat Waktu</span>
+</div>
+<span class="text-sm font-bold text-primary">76.4%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-tertiary"></span>
+<span class="text-sm text-on-surface">Izin &amp; Sakit</span>
+</div>
+<span class="text-sm font-bold text-tertiary">12.1%</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-error"></span>
+<span class="text-sm text-on-surface">Alpha / Tanpa Ket.</span>
+</div>
+<span class="text-sm font-bold text-error">11.5%</span>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant">
+<div class="flex justify-between items-center text-xs text-on-surface-variant">
+<span>Total Record</span>
+<span class="font-mono">12,482</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Key Metrics Column -->
+<div class="col-span-12 lg:col-span-4 flex flex-col gap-gutter">
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding flex-1 flex flex-col justify-between overflow-hidden relative group">
+<div class="relative z-10">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 block">MAHASISWA TERRAJIN</span>
+<h4 class="text-2xl font-bold text-on-surface mb-1">Aditya Pratama</h4>
+<p class="text-sm text-primary">Informatika - 100% Kehadiran</p>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-[120px]">verified</span>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding flex-1 flex flex-col justify-between">
+<div>
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 block">HARI TERTINGGI</span>
+<h4 class="text-2xl font-bold text-on-surface mb-1">Selasa</h4>
+<p class="text-sm text-tertiary">Rata-rata 94% Kehadiran</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Trend Section -->
+<div class="grid grid-cols-12 gap-gutter mb-section-gap">
+<div class="col-span-12 bg-surface-container-low border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h3 class="font-title-sm text-title-sm text-on-surface">Tren Kehadiran (30 Hari Terakhir)</h3>
+<p class="text-sm text-on-surface-variant">Fluktuasi harian kehadiran sistem</p>
+</div>
+<div class="text-right">
+<span class="text-sm font-bold text-primary">↑ 4.2%</span>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-tighter">vs bulan lalu</p>
+</div>
+</div>
+<!-- Line Chart Visualization (Simplified SVG) -->
+<div class="h-[240px] w-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 240">
+<!-- Horizontal Grid Lines -->
+<line stroke="#334155" stroke-dasharray="4" stroke-width="1" x1="0" x2="1000" y1="60" y2="60"></line>
+<line stroke="#334155" stroke-dasharray="4" stroke-width="1" x1="0" x2="1000" y1="120" y2="120"></line>
+<line stroke="#334155" stroke-dasharray="4" stroke-width="1" x1="0" x2="1000" y1="180" y2="180"></line>
+<!-- Line Chart Path -->
+<path d="M0,180 L50,170 L100,175 L150,150 L200,160 L250,140 L300,130 L350,145 L400,120 L450,110 L500,105 L550,115 L600,90 L650,85 L700,95 L750,70 L800,60 L850,65 L900,50 L950,55 L1000,40" fill="none" stroke="#38bdf8" stroke-width="3"></path>
+<!-- Gradient Fill -->
+<path d="M0,180 L50,170 L100,175 L150,150 L200,160 L250,140 L300,130 L350,145 L400,120 L450,110 L500,105 L550,115 L600,90 L650,85 L700,95 L750,70 L800,60 L850,65 L900,50 L950,55 L1000,40 V240 H0 Z" fill="url(#trendGradient)" fill-opacity="0.2"></path>
+<defs>
+<lineargradient id="trendGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#38bdf8"></stop>
+<stop offset="100%" stop-color="#38bdf8" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+</svg>
+<!-- Axis Labels -->
+<div class="flex justify-between mt-4 text-[10px] text-on-surface-variant font-medium">
+<span>1 OKT</span>
+<span>7 OKT</span>
+<span>14 OKT</span>
+<span>21 OKT</span>
+<span>28 OKT</span>
+<span>HARI INI</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Ranking Section -->
+<div>
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-title-sm text-title-sm text-on-surface">Peringkat Kehadiran Per Kelas</h3>
+<button class="text-primary text-sm font-semibold hover:underline">Lihat Semua</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+<!-- Class Card 1 -->
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold">1</div>
+<span class="text-xs font-bold text-emerald-400">+2.1%</span>
+</div>
+<h5 class="font-bold text-on-surface text-sm mb-4">IF-44-01 (Informatika)</h5>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-on-surface-variant">Presentase</span>
+<span class="text-on-surface font-bold">98.2%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 98.2%"></div>
+</div>
+</div>
+<!-- Class Card 2 -->
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface font-bold">2</div>
+<span class="text-xs font-bold text-emerald-400">+1.5%</span>
+</div>
+<h5 class="font-bold text-on-surface text-sm mb-4">SI-42-05 (Sist. Info)</h5>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-on-surface-variant">Presentase</span>
+<span class="text-on-surface font-bold">95.8%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 95.8%"></div>
+</div>
+</div>
+<!-- Class Card 3 -->
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface font-bold">3</div>
+<span class="text-xs font-bold text-error">-0.4%</span>
+</div>
+<h5 class="font-bold text-on-surface text-sm mb-4">DKV-44-01 (Desain)</h5>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-on-surface-variant">Presentase</span>
+<span class="text-on-surface font-bold">92.4%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 92.4%"></div>
+</div>
+</div>
+<!-- Class Card 4 -->
+<div class="bg-surface-container border border-outline-variant rounded-xl p-card-padding">
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center text-on-surface font-bold">4</div>
+<span class="text-xs font-bold text-emerald-400">+0.8%</span>
+</div>
+<h5 class="font-bold text-on-surface text-sm mb-4">MN-41-02 (Manajemen)</h5>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-on-surface-variant">Presentase</span>
+<span class="text-on-surface font-bold">89.9%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 89.9%"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB (Hidden on Reports as per suppression rules) -->
+<!-- Logic: Suppressed on Details and Reports pages as it is task-specific for Home/Dashboard -->
+</body></html>
