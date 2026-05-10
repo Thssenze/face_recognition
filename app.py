@@ -4,18 +4,30 @@
 from flask import (Flask, request, jsonify, render_template,
                    redirect, url_for, session, flash)
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
+import base64
+import threading
+import numpy as np
+import cv2
 import database as db
 from config import (FLASK_HOST, FLASK_PORT, FLASK_SECRET_KEY,
-                    SNAPSHOT_PATH, TOLERANSI_MENIT, DATASET_PATH)
+                    SNAPSHOT_PATH, TOLERANSI_MENIT, DATASET_PATH,
+                    CONFIDENCE_THRESHOLD, ANTI_SPOOFING_THRESHOLD,
+                    ESP32_ENABLED, ESP32_IP, ESP32_PORT, ESP32_TIMEOUT,
+                    MODEL_PATH)
 
-# ── Inisialisasi Flask ────────────────────────────────────────
+# ── Inisialisasi Flask + SocketIO ─────────────────────────────
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Status kamera global
+camera_state = {'active': False}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -514,15 +526,351 @@ def api_training_start():
     })
 
 
+
+# ══════════════════════════════════════════════════════════════
+# FACE RECOGNITION + ABSENSI OTOMATIS
+# ══════════════════════════════════════════════════════════════
+
+def _decode_frame(frame_b64):
+    """Decode base64 frame menjadi numpy array BGR OpenCV."""
+    try:
+        # Hapus header data URI jika ada
+        if ',' in frame_b64:
+            frame_b64 = frame_b64.split(',', 1)[1]
+        img_bytes = base64.b64decode(frame_b64)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        return frame
+    except Exception as e:
+        print(f'[ERROR] Gagal decode frame: {e}')
+        return None
+
+
+def _simpan_snapshot(frame, user_id):
+    """Simpan snapshot bukti absensi ke folder snapshots/."""
+    try:
+        os.makedirs(SNAPSHOT_PATH, exist_ok=True)
+        now = datetime.now()
+        filename = f"{user_id}_{now.strftime('%Y%m%d_%H%M%S')}.jpg"
+        filepath = os.path.join(SNAPSHOT_PATH, filename)
+        cv2.imwrite(filepath, frame)
+        return filepath
+    except Exception as e:
+        print(f'[ERROR] Gagal simpan snapshot: {e}')
+        return None
+
+
+def _kirim_ke_esp32(nama, nim, status_pesan):
+    """Kirim notifikasi ke ESP32 via HTTP POST (jika diaktifkan)."""
+    if not ESP32_ENABLED:
+        return
+    try:
+        import requests
+        url = f"http://{ESP32_IP}:{ESP32_PORT}/absensi"
+        payload = {'nama': nama, 'nim': nim, 'status': status_pesan}
+        requests.post(url, json=payload, timeout=ESP32_TIMEOUT)
+        print(f'[ESP32] Notifikasi terkirim: {nama} - {status_pesan}')
+    except Exception as e:
+        print(f'[ESP32] Gagal kirim: {e}')
+
+
+def _get_nama_hari():
+    """Dapatkan nama hari ini dalam Bahasa Indonesia."""
+    hari_map = {
+        0: 'Senin', 1: 'Selasa', 2: 'Rabu',
+        3: 'Kamis', 4: 'Jumat', 5: 'Sabtu', 6: 'Minggu'
+    }
+    return hari_map.get(datetime.now().weekday(), '')
+
+
+def _proses_recognition(frame):
+    """Proses satu frame: anti-spoofing → recognition → absensi.
+
+    Alur lengkap sesuai context.md bagian 5.4:
+    1. Cek anti-spoofing
+    2. Predict wajah dengan LBPH
+    3. Cari jadwal aktif hari ini
+    4. Cek duplikasi absensi
+    5. Tentukan status (hadir/terlambat)
+    6. Simpan snapshot + catat absensi
+    7. Kirim ke ESP32
+
+    Returns:
+        dict hasil proses untuk dikirim ke client
+    """
+    from face.anti_spoofing import check as spoofing_check
+    from face.recognition import predict_single
+
+    # ── 1. Anti-spoofing ──
+    spoof_result = spoofing_check(frame)
+
+    if not spoof_result['is_real']:
+        # Spoofing terdeteksi — simpan bukti ke spoofing_log
+        snapshot = _simpan_snapshot(frame, 'spoofing')
+        db.catat_spoofing(snapshot, spoof_result['score'])
+        return {
+            'status': 'error',
+            'tipe': 'spoofing',
+            'score': spoof_result['score'],
+            'pesan': 'Spoofing terdeteksi! Gunakan wajah asli.',
+            'spoofing': spoof_result
+        }
+
+    if spoof_result['label'] == 'NO_FACE':
+        return {
+            'status': 'skip',
+            'tipe': 'no_face',
+            'pesan': 'Tidak ada wajah terdeteksi.',
+            'spoofing': spoof_result
+        }
+
+    # ── 2. Predict wajah dengan LBPH ──
+    result = predict_single(frame)
+
+    if result is None:
+        return {
+            'status': 'skip',
+            'tipe': 'no_face',
+            'pesan': 'Wajah tidak terdeteksi untuk recognition.',
+            'spoofing': spoof_result
+        }
+
+    if not result['dikenali']:
+        return {
+            'status': 'error',
+            'tipe': 'unknown',
+            'confidence': result['confidence'],
+            'pesan': f'Wajah tidak dikenali (confidence: {result["confidence"]}).',
+            'spoofing': spoof_result
+        }
+
+    user_id = result['user_id']
+    confidence = result['confidence']
+
+    # ── 3. Ambil data mahasiswa ──
+    user = db.get_user_by_id(user_id)
+    if not user:
+        return {
+            'status': 'error',
+            'tipe': 'user_not_found',
+            'pesan': f'User ID {user_id} tidak ditemukan di database.',
+            'spoofing': spoof_result
+        }
+
+    # ── 4. Cari jadwal aktif hari ini ──
+    hari = _get_nama_hari()
+    waktu_sekarang = datetime.now().strftime('%H:%M:%S')
+    jadwal_list = db.get_jadwal_aktif(hari, waktu_sekarang)
+
+    if not jadwal_list:
+        return {
+            'status': 'error',
+            'tipe': 'no_jadwal',
+            'pesan': f'Tidak ada jadwal aktif saat ini ({hari} {waktu_sekarang}).',
+            'data': {'nama': user['nama'], 'nim': user['nim']},
+            'spoofing': spoof_result
+        }
+
+    # Cari jadwal yang sesuai kelas mahasiswa
+    jadwal = None
+    for j in jadwal_list:
+        if j['kelas_id'] == user['kelas_id']:
+            jadwal = j
+            break
+
+    if not jadwal:
+        return {
+            'status': 'error',
+            'tipe': 'no_jadwal',
+            'pesan': f'Tidak ada jadwal untuk kelas {user.get("nama_kelas", "")} saat ini.',
+            'data': {'nama': user['nama'], 'nim': user['nim']},
+            'spoofing': spoof_result
+        }
+
+    # ── 5. Cek duplikasi absensi ──
+    tanggal_hari_ini = date.today()
+    sudah = db.cek_sudah_absen(user_id, jadwal['id'], tanggal_hari_ini)
+
+    if sudah:
+        # Kirim notifikasi duplikat ke ESP32
+        _kirim_ke_esp32(user['nama'], user['nim'], 'duplikat')
+        return {
+            'status': 'error',
+            'tipe': 'duplikat',
+            'pesan': f'{user["nama"]} sudah absen untuk {jadwal["nama_mk"]} hari ini.',
+            'data': {
+                'nama': user['nama'], 'nim': user['nim'],
+                'status_absensi': sudah['status']
+            },
+            'spoofing': spoof_result
+        }
+
+    # ── 6. Tentukan status: hadir atau terlambat ──
+    batas_str = str(jadwal['batas_terlambat'])
+    # Konversi timedelta ke string waktu jika perlu
+    if isinstance(jadwal['batas_terlambat'], timedelta):
+        total_sec = int(jadwal['batas_terlambat'].total_seconds())
+        h, m, s = total_sec // 3600, (total_sec % 3600) // 60, total_sec % 60
+        batas_str = f'{h:02d}:{m:02d}:{s:02d}'
+
+    status_absensi = 'hadir' if waktu_sekarang <= batas_str else 'terlambat'
+
+    # ── 7. Simpan snapshot bukti absensi ──
+    snapshot_path = _simpan_snapshot(frame, user_id)
+
+    # ── 8. Catat absensi ke database ──
+    absensi_id = db.catat_absensi(
+        user_id=user_id,
+        jadwal_id=jadwal['id'],
+        tanggal=tanggal_hari_ini,
+        waktu_absen=waktu_sekarang,
+        status=status_absensi,
+        snapshot_path=snapshot_path,
+        dibuat_manual=False
+    )
+
+    if not absensi_id:
+        return {
+            'status': 'error',
+            'tipe': 'db_error',
+            'pesan': 'Gagal menyimpan absensi ke database.',
+            'spoofing': spoof_result
+        }
+
+    # ── 9. Kirim ke ESP32 ──
+    esp_status = 'berhasil'
+    _kirim_ke_esp32(user['nama'], user['nim'], esp_status)
+
+    # ── 10. Siapkan response ──
+    data_response = {
+        'nama': user['nama'],
+        'nim': user['nim'],
+        'nama_kelas': user.get('nama_kelas', ''),
+        'nama_mk': jadwal['nama_mk'],
+        'confidence': confidence,
+        'status_absensi': status_absensi,
+        'waktu_absen': waktu_sekarang,
+        'absensi_id': absensi_id,
+        'status': status_absensi
+    }
+
+    # Ambil statistik terbaru untuk update dashboard
+    stats = db.get_statistik_dashboard()
+
+    return {
+        'status': 'ok',
+        'pesan': f'Absensi {user["nama"]} berhasil ({status_absensi}).',
+        'data': data_response,
+        'stats': {
+            'hadir': stats.get('hadir_hari_ini', 0),
+            'terlambat': stats.get('terlambat_hari_ini', 0),
+            'alpha': stats.get('alpha_hari_ini', 0)
+        },
+        'spoofing': spoof_result
+    }
+
+
+@app.route('/api/absensi/proses', methods=['POST'])
+@login_required
+def api_absensi_proses():
+    """Proses frame dari kamera untuk face recognition + absensi.
+
+    Menerima base64 frame, jalankan anti-spoofing → recognition → catat absensi.
+    """
+    data = request.get_json()
+    if not data or 'frame' not in data:
+        return jsonify({'status': 'error', 'pesan': 'Frame tidak ditemukan.', 'data': None}), 400
+
+    frame = _decode_frame(data['frame'])
+    if frame is None:
+        return jsonify({'status': 'error', 'pesan': 'Gagal decode frame.', 'data': None}), 400
+
+    hasil = _proses_recognition(frame)
+    return jsonify(hasil)
+
+
+@app.route('/api/camera/toggle', methods=['POST'])
+@login_required
+def api_camera_toggle():
+    """Toggle status kamera ON/OFF."""
+    data = request.get_json()
+    if data and 'active' in data:
+        camera_state['active'] = bool(data['active'])
+    else:
+        camera_state['active'] = not camera_state['active']
+
+    status = 'on' if camera_state['active'] else 'off'
+    return jsonify({
+        'status': 'ok',
+        'pesan': f'Kamera {status}.',
+        'data': {'camera_active': camera_state['active']}
+    })
+
+
+# ══════════════════════════════════════════════════════════════
+# WEBSOCKET HANDLERS (Flask-SocketIO)
+# ══════════════════════════════════════════════════════════════
+
+@socketio.on('connect')
+def handle_connect():
+    """Client terhubung via WebSocket."""
+    print('[SOCKET] Client terhubung.')
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Client terputus."""
+    print('[SOCKET] Client terputus.')
+
+
+@socketio.on('camera_toggle')
+def handle_camera_toggle(data):
+    """Toggle kamera dari client."""
+    camera_state['active'] = data.get('active', False)
+    emit('camera_status', {'active': camera_state['active']}, broadcast=True)
+
+
+@socketio.on('process_frame')
+def handle_process_frame(data):
+    """Terima frame dari client via WebSocket, proses recognition."""
+    if 'frame' not in data:
+        emit('recognition_result', {'status': 'error', 'pesan': 'Frame kosong.'})
+        return
+
+    frame = _decode_frame(data['frame'])
+    if frame is None:
+        emit('recognition_result', {'status': 'error', 'pesan': 'Gagal decode.'})
+        return
+
+    hasil = _proses_recognition(frame)
+    emit('recognition_result', hasil)
+
+    # Jika absensi berhasil, broadcast ke semua client
+    if hasil.get('status') == 'ok' and hasil.get('data'):
+        socketio.emit('absensi_update', {
+            **hasil['data'],
+            'stats': hasil.get('stats')
+        })
+
+
 # ══════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ══════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
-    print("=" * 45)
-    print("   FLASK SERVER - SISTEM ABSENSI")
-    print("=" * 45)
-    print(f"\n[INFO] Dashboard : http://127.0.0.1:{FLASK_PORT}")
-    print(f"[INFO] Login     : http://127.0.0.1:{FLASK_PORT}/login")
+    # Pastikan folder yang dibutuhkan ada
+    os.makedirs(SNAPSHOT_PATH, exist_ok=True)
+    os.makedirs(DATASET_PATH, exist_ok=True)
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+
+    print("=" * 50)
+    print("   FLASK + SOCKETIO — SISTEM ABSENSI")
+    print("=" * 50)
+    print(f"\n[INFO] Dashboard  : http://127.0.0.1:{FLASK_PORT}")
+    print(f"[INFO] Login      : http://127.0.0.1:{FLASK_PORT}/login")
+    print(f"[INFO] WebSocket  : ws://127.0.0.1:{FLASK_PORT}")
+    print(f"[INFO] Anti-Spoof : threshold={ANTI_SPOOFING_THRESHOLD}")
+    print(f"[INFO] Confidence : threshold={CONFIDENCE_THRESHOLD}")
+    print(f"[INFO] ESP32      : {'Aktif' if ESP32_ENABLED else 'Nonaktif'}")
     print(f"[INFO] Tekan Ctrl+C untuk menghentikan.\n")
-    app.run(host=FLASK_HOST, port=FLASK_PORT, debug=True)
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True)
