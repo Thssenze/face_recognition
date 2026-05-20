@@ -512,14 +512,14 @@ def absensi_export():
 
     # ── Header kolom ──
     headers = ['Nama', 'NIM', 'Kelas', 'Mata Kuliah', 'Kode MK',
-               'Hari', 'Tanggal', 'Waktu Absen', 'Status']
+               'Hari', 'Tanggal', 'Waktu Absen', 'Status', 'Keterangan']
 
     def _row(a):
         return [
             a.get('nama', ''), a.get('nim', ''), a.get('nama_kelas', ''),
             a.get('nama_mk', ''), a.get('kode_mk', ''), a.get('hari', ''),
             str(a.get('tanggal', '')), str(a.get('waktu_absen', '') or '-'),
-            a.get('status', '')
+            a.get('status', ''), a.get('alasan', '') or '-'
         ]
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -536,7 +536,7 @@ def absensi_export():
             ws.title = 'Rekap Absensi'
 
             # Header baris 1: judul
-            ws.merge_cells('A1:I1')
+            ws.merge_cells('A1:J1')
             ws['A1'] = 'REKAP ABSENSI — SISTEM ABSENSI'
             ws['A1'].font = Font(bold=True, size=14)
             ws['A1'].alignment = Alignment(horizontal='center')
@@ -552,18 +552,19 @@ def absensi_export():
             # Data
             STATUS_COLOR = {
                 'hadir': 'D1FAE5', 'terlambat': 'FEF3C7',
-                'izin': 'DBEAFE', 'alpha': 'FEE2E2'
+                'izin': 'DBEAFE', 'sakit': 'FEF3C7', 'alpha': 'FEE2E2'
             }
             for row_idx, a in enumerate(rekap, 3):
                 row_data = _row(a)
                 for col_idx, val in enumerate(row_data, 1):
                     cell = ws.cell(row=row_idx, column=col_idx, value=val)
                     status = a.get('status', '')
-                    if col_idx == len(headers) and status in STATUS_COLOR:
+                    # Warnai status (kolom ke-9)
+                    if col_idx == 9 and status in STATUS_COLOR:
                         cell.fill = PatternFill('solid', fgColor=STATUS_COLOR[status])
 
             # Lebar kolom otomatis
-            col_widths = [25, 15, 12, 25, 12, 10, 12, 14, 12]
+            col_widths = [25, 15, 12, 25, 12, 10, 12, 14, 12, 25]
             for i, w in enumerate(col_widths, 1):
                 ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
 
@@ -696,6 +697,85 @@ def api_absensi_hari_ini():
         return jsonify({'status': 'error', 'data': [], 'pesan': str(e)})
 
 
+@app.route('/api/absensi/manual', methods=['POST'])
+@login_required
+def api_absensi_manual():
+    """Catat absensi manual oleh admin (izin, sakit, hadir, dll)."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'pesan': 'Data tidak valid.'}), 400
+
+    user_id = data.get('user_id')
+    jadwal_id = data.get('jadwal_id')
+    status = data.get('status', '').strip()
+    alasan = data.get('alasan', '').strip() or None
+
+    if not user_id or not jadwal_id or not status:
+        return jsonify({'status': 'error', 'pesan': 'User, jadwal, dan status wajib diisi.'}), 400
+
+    if status not in ('hadir', 'terlambat', 'izin', 'sakit', 'alpha'):
+        return jsonify({'status': 'error', 'pesan': 'Status tidak valid.'}), 400
+
+    # Validasi user dan jadwal ada
+    user = db.get_user_by_id(int(user_id))
+    if not user:
+        return jsonify({'status': 'error', 'pesan': 'Mahasiswa tidak ditemukan.'}), 404
+
+    tanggal = date.today()
+    hasil = db.catat_absensi_manual(int(user_id), int(jadwal_id), tanggal, status, alasan)
+
+    if hasil:
+        aksi = 'diperbarui' if hasil['aksi'] == 'update' else 'dicatat'
+        pesan = f"Absensi {user['nama']} berhasil {aksi} sebagai {status}."
+        if hasil.get('status_lama'):
+            pesan += f" (sebelumnya: {hasil['status_lama']})"
+        print(f"[MANUAL] {pesan}")
+        return jsonify({'status': 'ok', 'pesan': pesan, 'data': hasil})
+    else:
+        return jsonify({'status': 'error', 'pesan': 'Gagal mencatat absensi.'}), 500
+
+
+@app.route('/api/mahasiswa/list')
+@login_required
+def api_mahasiswa_list():
+    """Daftar semua mahasiswa untuk dropdown."""
+    users = db.get_semua_user()
+    data = [{'id': u['id'], 'nama': u['nama'], 'nim': u['nim'],
+             'kelas_id': u['kelas_id'], 'nama_kelas': u['nama_kelas']} for u in users]
+    return jsonify({'status': 'ok', 'data': data})
+
+
+@app.route('/api/jadwal/hari-ini')
+@login_required
+def api_jadwal_hari_ini():
+    """Daftar jadwal hari ini (semua, bukan hanya yang aktif)."""
+    hari = _get_nama_hari()
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT j.id, j.hari, j.jam_mulai, j.jam_selesai,
+                   m.nama_mk, m.kelas_id, k.nama_kelas
+            FROM jadwal j
+            JOIN matakuliah m ON j.matakuliah_id = m.id
+            JOIN kelas k ON m.kelas_id = k.id
+            WHERE j.hari = %s
+            ORDER BY j.jam_mulai
+        """, (hari,))
+        hasil = cursor.fetchall()
+        # Konversi timedelta ke string
+        for row in hasil:
+            for key, val in row.items():
+                if isinstance(val, timedelta):
+                    total = int(val.total_seconds())
+                    h, r = divmod(total, 3600)
+                    m, s = divmod(r, 60)
+                    row[key] = f'{h:02d}:{m:02d}'
+        cursor.close(); conn.close()
+        return jsonify({'status': 'ok', 'data': hasil})
+    except Exception as e:
+        return jsonify({'status': 'error', 'data': [], 'pesan': str(e)})
+
 @app.route('/api/foto/upload', methods=['POST'])
 @login_required
 def api_foto_upload():
@@ -779,6 +859,54 @@ def api_training_start():
         'pesan': 'Training dimulai di background. Model akan diperbarui otomatis.',
         'data': None
     })
+
+
+@app.route('/api/search')
+@login_required
+def api_search():
+    """Endpoint API untuk mencari data mahasiswa dan jadwal secara realtime."""
+    query = request.args.get('q', '').strip()
+    if not query:
+        return jsonify({
+            'status': 'ok',
+            'data': {'mahasiswa': [], 'jadwal': []},
+            'pesan': 'Query pencarian kosong.'
+        })
+
+    try:
+        mahasiswa = db.cari_mahasiswa(query)
+        jadwal = db.cari_jadwal(query)
+
+        # Konversi tipe data non-JSON-serializable (seperti timedelta) ke string
+        for row in jadwal:
+            for key in ['jam_mulai', 'jam_selesai', 'batas_terlambat']:
+                if key in row:
+                    val = row[key]
+                    if isinstance(val, timedelta):
+                        total_seconds = int(val.total_seconds())
+                        hours, remainder = divmod(total_seconds, 3600)
+                        minutes, seconds = divmod(remainder, 60)
+                        row[key] = f'{hours:02d}:{minutes:02d}'
+                    elif hasattr(val, 'strftime'):
+                        row[key] = val.strftime('%H:%M')
+                    else:
+                        row[key] = str(val)[:5]
+
+        return jsonify({
+            'status': 'ok',
+            'data': {
+                'mahasiswa': mahasiswa,
+                'jadwal': jadwal
+            },
+            'pesan': 'Pencarian berhasil.'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'data': {'mahasiswa': [], 'jadwal': []},
+            'pesan': f'Terjadi kesalahan saat mencari: {str(e)}'
+        })
+
 
 
 
@@ -1158,6 +1286,44 @@ def handle_process_frame(data):
 
 
 # ══════════════════════════════════════════════════════════════
+# AUTO-ALPHA: Background thread untuk tandai alpha otomatis
+# ══════════════════════════════════════════════════════════════
+
+def _auto_alpha_checker():
+    """Background thread: cek jadwal yang sudah selesai, tandai alpha otomatis."""
+    import time as _time
+    print('[AUTO-ALPHA] Background checker dimulai.')
+
+    while True:
+        _time.sleep(60)  # Cek setiap 60 detik
+        try:
+            hari = _get_nama_hari()
+            waktu_sekarang = datetime.now().strftime('%H:%M:%S')
+            tanggal = date.today()
+
+            # Ambil semua jadwal yang sudah selesai hari ini
+            jadwal_selesai = db.get_jadwal_selesai_hari_ini(hari, waktu_sekarang)
+
+            for j in jadwal_selesai:
+                jadwal_id = j['id']
+                kelas_id = j['kelas_id']
+
+                # Cari mahasiswa yang belum absen
+                belum_absen = db.get_mahasiswa_belum_absen(jadwal_id, kelas_id, tanggal)
+
+                if belum_absen:
+                    user_ids = [m['id'] for m in belum_absen]
+                    count = db.bulk_catat_alpha(jadwal_id, user_ids, tanggal)
+                    if count > 0:
+                        nama_mk = j.get('nama_mk', '?')
+                        print(f'[AUTO-ALPHA] {count} mahasiswa ditandai alpha '
+                              f'untuk {nama_mk} (jadwal #{jadwal_id})')
+
+        except Exception as e:
+            print(f'[AUTO-ALPHA] Error: {e}')
+
+
+# ══════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ══════════════════════════════════════════════════════════════
 
@@ -1168,6 +1334,11 @@ if __name__ == '__main__':
     os.makedirs(DATASET_PATH, exist_ok=True)
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 
+    # Jalankan auto-alpha checker di background thread
+    import threading
+    alpha_thread = threading.Thread(target=_auto_alpha_checker, daemon=True)
+    alpha_thread.start()
+
     print("=" * 50)
     print("   FLASK + SOCKETIO — SISTEM ABSENSI")
     print("=" * 50)
@@ -1177,6 +1348,7 @@ if __name__ == '__main__':
     print(f"[INFO] Anti-Spoof : threshold={ANTI_SPOOFING_THRESHOLD}")
     print(f"[INFO] Confidence : threshold={CONFIDENCE_THRESHOLD}")
     print(f"[INFO] ESP32      : {'Aktif' if ESP32_ENABLED else 'Nonaktif'}")
+    print(f"[INFO] Auto-Alpha : Aktif (cek setiap 60 detik)")
     print(f"[INFO] Tekan Ctrl+C untuk menghentikan.\n")
     socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True,
                  allow_unsafe_werkzeug=True)

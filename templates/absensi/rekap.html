@@ -158,11 +158,16 @@
                         {% elif a.status == 'terlambat' %}
                         <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-tertiary/10 text-tertiary border border-tertiary/20">Terlambat</span>
                         {% elif a.status == 'izin' %}
-                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">Izin</span>
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20" {% if a.alasan %}title="Alasan: {{ a.alasan }}"{% endif %}>Izin</span>
+                        {% elif a.status == 'sakit' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30" {% if a.alasan %}title="Alasan: {{ a.alasan }}"{% endif %}>Sakit</span>
                         {% elif a.status == 'alpha' %}
                         <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-error/10 text-error border border-error/20">Alpha</span>
                         {% else %}
                         <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-outline/10 text-outline border border-outline/20">{{ a.status|capitalize }}</span>
+                        {% endif %}
+                        {% if a.alasan %}
+                        <p class="text-[11px] text-on-surface-variant/80 mt-1 italic font-sans" title="Alasan: {{ a.alasan }}">Ket: {{ a.alasan }}</p>
                         {% endif %}
                     </td>
                     <td class="px-6 py-4">

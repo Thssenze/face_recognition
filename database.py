@@ -484,17 +484,17 @@ def nim_sudah_ada(nim):
 # ══════════════════════════════════════════════════════════════
 
 def catat_absensi(user_id, jadwal_id, tanggal, waktu_absen, status,
-                  snapshot_path=None, dibuat_manual=False):
+                  snapshot_path=None, dibuat_manual=False, alasan=None):
     """Simpan record absensi. Return id atau None (duplikat/gagal)."""
     try:
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """INSERT INTO absensi
-               (user_id, jadwal_id, tanggal, waktu_absen, status, snapshot_path, dibuat_manual)
-               VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+               (user_id, jadwal_id, tanggal, waktu_absen, status, alasan, snapshot_path, dibuat_manual)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
             (user_id, jadwal_id, tanggal, waktu_absen, status,
-             snapshot_path, dibuat_manual)
+             alasan, snapshot_path, dibuat_manual)
         )
         conn.commit()
         absensi_id = cursor.lastrowid
@@ -502,6 +502,51 @@ def catat_absensi(user_id, jadwal_id, tanggal, waktu_absen, status,
         return absensi_id
     except Exception:
         # Kemungkinan UNIQUE constraint violation (sudah absen)
+        return None
+
+
+def catat_absensi_manual(user_id, jadwal_id, tanggal, status, alasan=None):
+    """Absen manual oleh admin: insert baru atau update jika sudah ada.
+    Berguna untuk izin/sakit atau koreksi status.
+    Return dict {'aksi': 'insert'/'update', 'id': absensi_id} atau None.
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Cek apakah sudah ada record absensi
+        cursor.execute(
+            "SELECT id, status FROM absensi WHERE user_id=%s AND jadwal_id=%s AND tanggal=%s",
+            (user_id, jadwal_id, tanggal)
+        )
+        existing = cursor.fetchone()
+
+        waktu_now = datetime.now().strftime('%H:%M:%S')
+
+        if existing:
+            # Update record yang sudah ada
+            cursor.execute(
+                """UPDATE absensi SET status=%s, alasan=%s, dibuat_manual=TRUE,
+                   waktu_absen=%s WHERE id=%s""",
+                (status, alasan, waktu_now, existing['id'])
+            )
+            conn.commit()
+            cursor.close(); conn.close()
+            return {'aksi': 'update', 'id': existing['id'], 'status_lama': existing['status']}
+        else:
+            # Insert baru
+            cursor.execute(
+                """INSERT INTO absensi
+                   (user_id, jadwal_id, tanggal, waktu_absen, status, alasan, dibuat_manual)
+                   VALUES (%s, %s, %s, %s, %s, %s, TRUE)""",
+                (user_id, jadwal_id, tanggal, waktu_now, status, alasan)
+            )
+            conn.commit()
+            absensi_id = cursor.lastrowid
+            cursor.close(); conn.close()
+            return {'aksi': 'insert', 'id': absensi_id}
+    except Exception as e:
+        print(f'[DB] Error catat_absensi_manual: {e}')
         return None
 
 
@@ -798,15 +843,22 @@ def get_statistik_dashboard():
         """, (date.today(),))
         status_hari_ini = {r['status']: r['jumlah'] for r in cursor.fetchall()}
 
-        # Total kelas
-        cursor.execute("SELECT COUNT(*) as total FROM kelas")
-        total_kelas = cursor.fetchone()['total']
+        # Kelas aktif hari ini (kelas yang punya jadwal hari ini)
+        hari_map = {0:'Senin',1:'Selasa',2:'Rabu',3:'Kamis',4:'Jumat',5:'Sabtu',6:'Minggu'}
+        hari_ini = hari_map.get(datetime.now().weekday(), '')
+        cursor.execute("""
+            SELECT COUNT(DISTINCT m.kelas_id) as total
+            FROM jadwal j
+            JOIN matakuliah m ON j.matakuliah_id = m.id
+            WHERE j.hari = %s
+        """, (hari_ini,))
+        kelas_aktif = cursor.fetchone()['total']
 
         cursor.close(); conn.close()
 
         return {
             'total_mahasiswa': total_mhs,
-            'total_kelas': total_kelas,
+            'total_kelas': kelas_aktif,
             'hadir_hari_ini': status_hari_ini.get('hadir', 0),
             'terlambat_hari_ini': status_hari_ini.get('terlambat', 0),
             'alpha_hari_ini': status_hari_ini.get('alpha', 0),
@@ -816,3 +868,118 @@ def get_statistik_dashboard():
             'total_mahasiswa': 0, 'total_kelas': 0,
             'hadir_hari_ini': 0, 'terlambat_hari_ini': 0, 'alpha_hari_ini': 0,
         }
+
+
+def get_jadwal_selesai_hari_ini(hari, waktu_sekarang):
+    """Ambil jadwal yang sudah selesai hari ini (jam_selesai < waktu_sekarang)."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT j.*, m.nama_mk, m.kelas_id
+            FROM jadwal j
+            JOIN matakuliah m ON j.matakuliah_id = m.id
+            WHERE j.hari = %s AND j.jam_selesai < %s
+        """, (hari, waktu_sekarang))
+        hasil = cursor.fetchall()
+        cursor.close(); conn.close()
+        return hasil
+    except Exception:
+        return []
+
+
+def get_mahasiswa_belum_absen(jadwal_id, kelas_id, tanggal):
+    """Ambil daftar user_id yang belum absen untuk jadwal tertentu hari ini."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.id, u.nama, u.nim
+            FROM users u
+            WHERE u.kelas_id = %s
+              AND u.id NOT IN (
+                  SELECT a.user_id FROM absensi a
+                  WHERE a.jadwal_id = %s AND a.tanggal = %s
+              )
+        """, (kelas_id, jadwal_id, tanggal))
+        hasil = cursor.fetchall()
+        cursor.close(); conn.close()
+        return hasil
+    except Exception:
+        return []
+
+
+def bulk_catat_alpha(jadwal_id, user_ids, tanggal):
+    """Insert batch record alpha untuk mahasiswa yang tidak hadir."""
+    if not user_ids:
+        return 0
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        count = 0
+        for uid in user_ids:
+            try:
+                cursor.execute("""
+                    INSERT INTO absensi (user_id, jadwal_id, tanggal, waktu_absen, status)
+                    VALUES (%s, %s, %s, '00:00:00', 'alpha')
+                """, (uid, jadwal_id, tanggal))
+                count += 1
+            except Exception:
+                # Skip jika sudah ada (UNIQUE constraint)
+                pass
+        conn.commit()
+        cursor.close(); conn.close()
+        return count
+    except Exception:
+        return 0
+
+
+
+# ══════════════════════════════════════════════════════════════
+# PENCARIAN MAHASISWA DAN JADWAL
+# ══════════════════════════════════════════════════════════════
+
+def cari_mahasiswa(query_str):
+    """Cari mahasiswa berdasarkan nama atau NIM. Return list dict atau []."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        sql = """
+            SELECT u.*, k.nama_kelas
+            FROM users u
+            JOIN kelas k ON u.kelas_id = k.id
+            WHERE u.nama LIKE %s OR u.nim LIKE %s
+            ORDER BY u.nama
+            LIMIT 10
+        """
+        like_query = f"%{query_str}%"
+        cursor.execute(sql, (like_query, like_query))
+        hasil = cursor.fetchall()
+        cursor.close(); conn.close()
+        return hasil
+    except Exception:
+        return []
+
+
+def cari_jadwal(query_str):
+    """Cari jadwal berdasarkan nama MK, kode MK, hari, atau nama kelas. Return list dict atau []."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        sql = """
+            SELECT j.*, m.nama_mk, m.kode_mk, k.nama_kelas
+            FROM jadwal j
+            JOIN matakuliah m ON j.matakuliah_id = m.id
+            JOIN kelas k ON m.kelas_id = k.id
+            WHERE m.nama_mk LIKE %s OR m.kode_mk LIKE %s OR j.hari LIKE %s OR k.nama_kelas LIKE %s
+            ORDER BY FIELD(j.hari,'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'),
+                     j.jam_mulai
+            LIMIT 10
+        """
+        like_query = f"%{query_str}%"
+        cursor.execute(sql, (like_query, like_query, like_query, like_query))
+        hasil = cursor.fetchall()
+        cursor.close(); conn.close()
+        return hasil
+    except Exception:
+        return []

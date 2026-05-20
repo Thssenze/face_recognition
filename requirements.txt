@@ -2,7 +2,11 @@ numpy==1.26.4
 opencv-python==4.8.1.78
 opencv-contrib-python==4.8.1.78
 Flask==3.0.3
-flask-cors==4.0.0
+Flask-Cors==4.0.0
+Flask-SocketIO==5.6.1
 mysql-connector-python==8.3.0
-Pillow==10.3.0
+pillow==10.3.0
 requests==2.31.0
+simple-websocket==1.1.0
+Werkzeug==3.1.8
+openpyxl==3.1.5

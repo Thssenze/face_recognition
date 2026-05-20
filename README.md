@@ -1,55 +1,59 @@
 # 🎓 Sistem Absensi Face Recognition
 
-Sistem absensi otomatis berbasis pengenalan wajah menggunakan Python, OpenCV LBPH, Flask, MySQL, dan ESP32 (LCD 16x2 + LED indikator).
+Sistem absensi otomatis berbasis pengenalan wajah (Face Recognition) yang terintegrasi penuh dalam satu aplikasi web Flask. Menggunakan OpenCV LBPH, Python 3.10, MySQL, WebSocket (Flask-SocketIO), dan mendukung integrasi perangkat keras ESP32.
 
 ---
 
-## ✨ Fitur
+## ✨ Fitur Utama
 
-- Deteksi & pengenalan wajah real-time via webcam
-- Pencatatan absensi otomatis ke database MySQL
-- Pencegahan absensi ganda dalam satu hari
-- Dashboard web real-time (auto-refresh 10 detik)
-- Laporan absensi dengan filter rentang tanggal
-- Export data ke CSV
-- Manajemen user (tambah & hapus)
-- Integrasi ESP32: LCD 16x2 menampilkan nama, LED indikator status
+- 🎥 **Unified Web Application**: Kamera, pendaftaran mahasiswa, pengenalan wajah real-time, training model, dan dashboard admin terpadu dalam satu server Flask. Tidak memerlukan script terpisah!
+- ⚡ **Real-Time WebSockets**: Streaming video dari webcam laptop/kamera ke dashboard web secara langsung dan responsif menggunakan Flask-SocketIO.
+- 🛡️ **Anti-Spoofing Engine**: Mencegah kecurangan absensi menggunakan foto/layar HP dengan analisis tekstur wajah berbasis Local Binary Patterns (LBP).
+- 🧠 **Background Model Training**: Pelatihan model pengenalan wajah (LBPH) dilakukan secara asinkron di background thread tanpa mengganggu jalannya aplikasi web Flask.
+- 📆 **Sistem Penjadwalan Dinamis**: Dukungan manajemen Kelas, Mata Kuliah, dan Jadwal Kuliah lengkap dengan batas toleransi keterlambatan.
+- 🕒 **Auto-Alpha Engine**: Background worker yang berjalan setiap 60 detik untuk menandai mahasiswa yang tidak hadir setelah jam mata kuliah berakhir secara otomatis menjadi `alpha`.
+- 📝 **Absensi Manual & Izin**: Fitur pencatatan absensi manual oleh admin untuk mengubah status menjadi `Hadir`, `Terlambat`, `Izin`, `Sakit`, atau `Alpha` lengkap dengan form alasan/keterangan.
+- 📊 **Rekapitulasi & Ekspor Laporan**: Fitur penyaringan absensi berdasarkan Kelas, Mata Kuliah, dan Rentang Tanggal, serta dapat diunduh dalam format **Excel (.xlsx)** atau **CSV**.
+- 🔌 **Integrasi Perangkat Keras (ESP32)**: Opsional, menampilkan nama mahasiswa yang berhasil absen di LCD 16x2 I2C serta menyalakan LED indikator status (Hijau = Berhasil, Merah = Gagal/Duplikat).
 
 ---
 
-## 🛠️ Teknologi
+## 🛠️ Teknologi & Stack
 
 | Komponen | Teknologi |
 |---|---|
-| Bahasa | Python 3.10 |
-| Computer Vision | OpenCV 4.8 + LBPH Face Recognizer |
-| Web Framework | Flask 3.0 |
-| Database | MySQL 8.0 |
-| Mikrokontroler | ESP32 + Arduino |
-| Display | LCD 16x2 I2C |
+| **Bahasa Pemrograman** | Python 3.10 |
+| **Computer Vision** | OpenCV 4.8.1 (dengan `opencv-contrib-python` untuk LBPH) |
+| **Web Framework** | Flask 3.0.3 |
+| **Realtime Engine** | Flask-SocketIO 5.6.1 + WebSockets |
+| **Database** | MySQL 8.0 (lokal atau cloud seperti Railway) |
+| **Ekspor Excel** | openpyxl 3.1.5 |
+| **Mikrokontroler** | ESP32 (Arduino IDE) + LCD 16x2 I2C + Dual LED |
 
 ---
 
-## 📋 Persyaratan
+## 📋 Persyaratan Sistem
 
-- Python **3.10** (direkomendasikan, bukan 3.11+)
+- Python **3.10.x** (Wajib, LBPH Face Recognizer tidak stabil di versi 3.11+)
 - MySQL Server 8.0+
-- Webcam
-- Arduino IDE (untuk ESP32)
+- Webcam bawaan laptop atau USB External Camera
+- Arduino IDE (Hanya jika menggunakan modul fisik ESP32)
 
 ---
 
-## 🚀 Cara Instalasi
+## 🚀 Panduan Instalasi & Penggunaan
 
-### 1. Clone Repository
+### 1. Persiapan Proyek
 
+Clone repository ini ke mesin lokal Anda:
 ```bash
 git clone https://github.com/USERNAME/REPO_NAME.git
 cd REPO_NAME
 ```
 
-### 2. Buat Virtual Environment dengan Python 3.10
+### 2. Membuat Virtual Environment (Wajib Python 3.10)
 
+Aktifkan virtual environment sebelum melanjutkan:
 ```bash
 # Windows
 py -3.10 -m venv venv
@@ -62,131 +66,117 @@ source venv/bin/activate
 
 ### 3. Install Dependencies
 
+Install seluruh pustaka Python yang dibutuhkan:
 ```bash
-pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Konfigurasi
+### 4. Konfigurasi Sistem
 
+Salin template berkas konfigurasi menjadi `config.py` dan sesuaikan nilainya (password database, port, dll.):
 ```bash
-# Salin template konfigurasi
-copy config.example.py config.py     # Windows
-cp config.example.py config.py       # Linux/macOS
+# Windows
+copy config.example.py config.py
 
-# Edit config.py dan isi password MySQL, IP ESP32, dll.
+# Linux / macOS
+cp config.example.py config.py
 ```
+> [!IMPORTANT]
+> Jangan pernah meng-commit berkas `config.py` ke repositori git karena berisi data kredensial penting.
 
-### 5. Buat Database MySQL
+### 5. Inisialisasi Database
 
-Login ke MySQL lalu jalankan:
-
-```sql
-CREATE DATABASE absensi_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE absensi_db;
-
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nama VARCHAR(100) NOT NULL,
-    nim VARCHAR(20) UNIQUE NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE absensi (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    nama VARCHAR(100),
-    nim VARCHAR(20),
-    tanggal DATE,
-    waktu TIME,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
-
-### 6. Jalankan Setup Otomatis
-
-Script ini akan membuat folder, membuat tabel database, dan memverifikasi semua komponen sekaligus:
-
+Jalankan script migrasi otomatis untuk membuat database, seluruh tabel relasional, dan user admin pertama secara interaktif:
 ```bash
-python setup.py
+python run_migration.py
 ```
 
-Semua item harus menampilkan `[OK]` sebelum melanjutkan.
+### 6. Uji Coba Kesiapan Sistem
+
+Gunakan script diagnostik untuk memverifikasi apakah webcam, MySQL, dan seluruh pustaka OpenCV/LBPH sudah terpasang dengan benar:
+```bash
+python test_setup.py
+```
 
 ---
 
-## 📖 Cara Penggunaan
+## 💻 Cara Menjalankan Aplikasi
 
-### Registrasi Wajah Baru
+Setelah semua langkah instalasi di atas selesai dengan sukses, Anda hanya perlu menjalankan satu perintah untuk memulai seluruh sistem:
 
-```bash
-python face_register.py
-```
-Ikuti instruksi di layar. Ambil ±50 foto dengan variasi posisi wajah.
-
-### Training Model
-
-```bash
-python train_model.py
-```
-Jalankan ulang setiap kali ada user baru didaftarkan.
-
-### Menjalankan Sistem (2 CMD terpisah)
-
-**CMD 1 — Dashboard:**
 ```bash
 python app.py
-# Buka browser: http://127.0.0.1:5000
 ```
 
-**CMD 2 — Pengenalan Wajah:**
-```bash
-python face_recognize.py
+Server akan aktif pada alamat:
+- **Dashboard Web**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
+- **Halaman Login Admin**: masukkan kredensial yang Anda daftarkan saat menjalankan `run_migration.py`.
+
+Semua aktivitas absensi wajah, pendaftaran wajah mahasiswa baru, training model, manajemen kelas, dan rekapitulasi data kini dapat dilakukan sepenuhnya melalui antarmuka web yang modern dan responsif.
+
+---
+
+## 🔌 Panduan Perangkat Keras ESP32 (Opsional)
+
+Jika Anda ingin mengintegrasikan sistem dengan perangkat keras ESP32 untuk notifikasi visual di kelas fisik:
+1. Hubungkan komponen LCD 16x2 I2C dan LED sesuai dengan panduan skema di berkas **[PANDUAN_ESP32.md](PANDUAN_ESP32.md)**.
+2. Unggah file sketch **`esp32_absensi/esp32_absensi.ino`** ke board ESP32 Anda menggunakan Arduino IDE.
+3. Ubah konfigurasi di `config.py` Anda:
+   ```python
+   ESP32_ENABLED = True
+   ESP32_IP      = "192.168.x.x"  # IP Address ESP32 yang terhubung WiFi
+   ```
+
+---
+
+## 📁 Struktur Folder Proyek
+
+```
+ProyekAbsensi/
+├── app.py                    # Entry point server Flask & SocketIO
+├── database.py               # Seluruh modul query & manipulasi MySQL
+├── config.py                 # Konfigurasi parameter & kredensial aplikasi
+├── config.example.py         # Template berkas konfigurasi untuk pengembang
+├── run_migration.py          # Script interaktif pembuat database & admin
+├── test_setup.py             # Script verifikasi kesiapan pustaka & perangkat
+├── requirements.txt          # Daftar paket python pihak ketiga
+├── PANDUAN_ESP32.md          # Panduan wiring & instruksi hardware ESP32
+│
+├── face/                     # Mesin utama Computer Vision
+│   ├── recognition.py        # Prediksi wajah & anti-spoofing logic
+│   ├── anti_spoofing.py      # Klasifikasi tekstur LBP wajah asli vs foto
+│   └── trainer.py            # Modul latih model LBPH asinkron
+│
+├── esp32_absensi/
+│   └── esp32_absensi.ino     # Sketch Arduino untuk perangkat keras ESP32
+│
+├── dataset/                  # Folder penyimpanan foto wajah mahasiswa (git-ignored)
+├── models/                   # Folder hasil training model trainer.yml (git-ignored)
+├── snapshots/                # Berkas tangkapan bukti absensi wajah (git-ignored)
+│
+├── templates/                # Berkas HTML template Jinja2
+│   ├── base.html             # Layout global (Sidebar & Navbar)
+│   ├── dashboard.html        # Live kamera web + absensi hari ini + kontrol kamera
+│   ├── mahasiswa/            # Registrasi (ambil foto web) & daftar mahasiswa
+│   ├── kelas/                # Manajemen data kelas mahasiswa
+│   ├── matakuliah/           # Manajemen mata kuliah
+│   ├── jadwal/               # Penjadwalan & batas toleransi terlambat
+│   └── absensi/              # Rekapitulasi absensi & filter export data
+│
+└── static/                   # Aset statis client-side (CSS, JS)
 ```
 
 ---
 
-## 🔌 Integrasi ESP32 (Opsional)
+## ⚠️ File Legacy yang Tidak Diperlukan Lagi
 
-Lihat **[PANDUAN_ESP32.md](PANDUAN_ESP32.md)** untuk panduan lengkap wiring dan upload kode.
-
-Setelah ESP32 terhubung, update `config.py`:
-```python
-ESP32_ENABLED = True
-ESP32_IP      = "192.168.X.X"  # IP ESP32 Anda
-```
-
----
-
-## 📁 Struktur Folder
-
-```
-├── app.py                  # Flask server & dashboard
-├── face_register.py        # Registrasi wajah baru
-├── face_recognize.py       # Engine pengenalan real-time
-├── train_model.py          # Training model LBPH
-├── database.py             # Fungsi koneksi & query DB
-├── config.example.py       # Template konfigurasi (salin → config.py)
-├── setup.py                # Setup otomatis (jalankan sekali setelah clone)
-├── requirements.txt        # Daftar library Python
-├── PANDUAN_ESP32.md        # Panduan integrasi ESP32
-├── esp32_absensi.ino       # Kode Arduino untuk ESP32
-├── dataset/                # (dibuat otomatis) Foto wajah per user
-└── models/                 # (dibuat otomatis) Model LBPH hasil training
-```
-
----
-
-## ⚠️ Catatan Penting
-
-- File `config.py` **tidak diupload ke GitHub** karena berisi password
-- Folder `dataset/` dan `models/` **tidak diupload** (privasi & ukuran)
-- Gunakan **Python 3.10** — versi 3.12+ belum tentu kompatibel dengan OpenCV LBPH
-- Pastikan laptop dan ESP32 terhubung ke **WiFi yang sama**
+Sistem absensi ini kini berjalan sepenuhnya pada platform web. File-file CLI berikut di direktori utama **sudah tidak diperlukan lagi** untuk operasional harian dan dapat dihapus dengan aman untuk merapikan repositori:
+- **`face_register.py`** (Digantikan oleh fitur registrasi mahasiswa interaktif berbasis web)
+- **`face_recognize.py`** (Digantikan oleh mesin recognition terintegrasi di dashboard web menggunakan WebSockets)
+- **`train_model.py`** (Digantikan oleh background training di panel dashboard web admin)
 
 ---
 
 ## 📄 Lisensi
 
-MIT License — bebas digunakan untuk keperluan pendidikan.
+Proyek ini dilisensikan di bawah **MIT License** — bebas digunakan untuk keperluan edukasi maupun pengembangan akademis.

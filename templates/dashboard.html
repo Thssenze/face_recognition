@@ -66,7 +66,7 @@
             </div>
         </div>
         <div class="mt-4 flex items-center gap-2">
-            <span class="text-body-sm font-body-sm text-on-surface-variant">{{ statistik.total_kelas }} kelas aktif</span>
+            <span class="text-body-sm font-body-sm text-on-surface-variant">{{ statistik.total_kelas }} kelas hari ini</span>
         </div>
     </div>
 </section>
@@ -130,7 +130,13 @@
     <div class="col-span-12 lg:col-span-5 bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden flex flex-col h-[500px]">
         <div class="p-gutter border-b border-outline-variant flex justify-between items-center bg-surface-container-high/50">
             <h4 class="font-title-sm text-title-sm text-on-surface">Absensi Hari Ini</h4>
-            <a href="{{ url_for('absensi_rekap') }}" class="text-primary text-body-sm font-semibold hover:underline">Lihat Semua</a>
+            <div class="flex items-center gap-2">
+                <button id="btn-absen-manual" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold hover:bg-primary/20 transition-colors border border-primary/20">
+                    <span class="material-symbols-outlined text-[16px]">edit_note</span>
+                    Absen Manual
+                </button>
+                <a href="{{ url_for('absensi_rekap') }}" class="text-primary text-body-sm font-semibold hover:underline">Lihat Semua</a>
+            </div>
         </div>
         <div class="flex-1 overflow-y-auto">
             <table class="w-full text-left border-collapse">
@@ -163,6 +169,10 @@
                             <span class="px-3 py-1 rounded-full bg-tertiary/15 text-tertiary text-[12px] font-bold">Terlambat</span>
                             {% elif a.status == 'alpha' %}
                             <span class="px-3 py-1 rounded-full bg-error/15 text-error text-[12px] font-bold">Alpha</span>
+                            {% elif a.status == 'izin' %}
+                            <span class="px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-[12px] font-bold" {% if a.alasan %}title="Alasan: {{ a.alasan }}"{% endif %}>Izin</span>
+                            {% elif a.status == 'sakit' %}
+                            <span class="px-3 py-1 rounded-full bg-amber-500/15 text-amber-400 text-[12px] font-bold" {% if a.alasan %}title="Alasan: {{ a.alasan }}"{% endif %}>Sakit</span>
                             {% else %}
                             <span class="px-3 py-1 rounded-full bg-secondary/15 text-secondary text-[12px] font-bold">{{ a.status|capitalize }}</span>
                             {% endif %}
@@ -181,6 +191,77 @@
         </div>
     </div>
 </section>
+
+<!-- Modal Absen Manual -->
+<div id="modal-absen-manual" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="modal-overlay"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="bg-surface-container-high border border-outline-variant rounded-2xl w-full max-w-md shadow-2xl relative">
+            <!-- Header -->
+            <div class="p-6 border-b border-outline-variant flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary">edit_note</span>
+                    </div>
+                    <div>
+                        <h3 class="font-title-sm text-title-sm text-on-surface font-bold">Absen Manual</h3>
+                        <p class="text-[12px] text-on-surface-variant">Catat absensi secara manual</p>
+                    </div>
+                </div>
+                <button id="modal-close" class="w-8 h-8 rounded-lg hover:bg-surface-container-highest flex items-center justify-center">
+                    <span class="material-symbols-outlined text-on-surface-variant">close</span>
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="p-6 space-y-4">
+                <!-- Pilih Jadwal -->
+                <div>
+                    <label class="block text-label-caps font-label-caps text-on-surface-variant uppercase mb-2">Jadwal Hari Ini</label>
+                    <select id="manual-jadwal" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                        <option value="">Memuat jadwal...</option>
+                    </select>
+                </div>
+                <!-- Pilih Mahasiswa -->
+                <div>
+                    <label class="block text-label-caps font-label-caps text-on-surface-variant uppercase mb-2">Mahasiswa</label>
+                    <select id="manual-mahasiswa" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                        <option value="">Pilih mahasiswa...</option>
+                    </select>
+                </div>
+                <!-- Pilih Status -->
+                <div>
+                    <label class="block text-label-caps font-label-caps text-on-surface-variant uppercase mb-2">Status</label>
+                    <div class="grid grid-cols-5 gap-2" id="manual-status-group">
+                        <button type="button" data-status="hadir" class="status-btn px-2 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all border-outline-variant text-on-surface-variant hover:border-emerald-500 hover:text-emerald-500">Hadir</button>
+                        <button type="button" data-status="terlambat" class="status-btn px-2 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all border-outline-variant text-on-surface-variant hover:border-tertiary hover:text-tertiary">Terlambat</button>
+                        <button type="button" data-status="izin" class="status-btn px-2 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all border-outline-variant text-on-surface-variant hover:border-blue-400 hover:text-blue-400">Izin</button>
+                        <button type="button" data-status="sakit" class="status-btn px-2 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all border-outline-variant text-on-surface-variant hover:border-amber-400 hover:text-amber-400">Sakit</button>
+                        <button type="button" data-status="alpha" class="status-btn px-2 py-2.5 rounded-xl border text-[11px] font-bold text-center transition-all border-outline-variant text-on-surface-variant hover:border-error hover:text-error">Alpha</button>
+                    </div>
+                </div>
+                <!-- Alasan (muncul untuk izin/sakit) -->
+                <div id="alasan-group" class="hidden">
+                    <label class="block text-label-caps font-label-caps text-on-surface-variant uppercase mb-2">Alasan</label>
+                    <input id="manual-alasan" type="text" placeholder="Tuliskan alasan izin/sakit..."
+                        class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant text-on-surface text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none placeholder:text-on-surface-variant/50">
+                </div>
+                <!-- Error message -->
+                <div id="manual-error" class="hidden bg-error-container/20 border border-error/30 rounded-lg p-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-error text-[16px]">error</span>
+                    <span class="text-[12px] text-on-error-container" id="manual-error-text"></span>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="p-6 border-t border-outline-variant flex justify-end gap-3">
+                <button id="modal-cancel" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-on-surface-variant hover:bg-surface-container-highest transition-colors">Batal</button>
+                <button id="modal-submit" class="px-5 py-2.5 rounded-xl text-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors flex items-center gap-2 disabled:opacity-50" disabled>
+                    <span class="material-symbols-outlined text-[18px]">save</span>
+                    Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Section 3: Statistik bawah -->
 <section class="grid grid-cols-12 gap-8">
@@ -230,4 +311,193 @@
 <!-- Camera + Dashboard scripts -->
 <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+<!-- Script Modal Absen Manual -->
+<script>
+(function() {
+    const modal     = document.getElementById('modal-absen-manual');
+    const btnOpen   = document.getElementById('btn-absen-manual');
+    const btnClose  = document.getElementById('modal-close');
+    const btnCancel = document.getElementById('modal-cancel');
+    const btnSubmit = document.getElementById('modal-submit');
+    const overlay   = document.getElementById('modal-overlay');
+    const selJadwal = document.getElementById('manual-jadwal');
+    const selMhs    = document.getElementById('manual-mahasiswa');
+    const inpAlasan = document.getElementById('manual-alasan');
+    const grpAlasan = document.getElementById('alasan-group');
+    const errDiv    = document.getElementById('manual-error');
+    const errText   = document.getElementById('manual-error-text');
+
+    let selectedStatus = '';
+    let allMahasiswa = [];
+
+    // Buka modal
+    function openModal() {
+        modal.classList.remove('hidden');
+        loadJadwal();
+        loadMahasiswa();
+        resetForm();
+    }
+
+    // Tutup modal
+    function closeModal() {
+        modal.classList.add('hidden');
+        resetForm();
+    }
+
+    function resetForm() {
+        selectedStatus = '';
+        inpAlasan.value = '';
+        grpAlasan.classList.add('hidden');
+        errDiv.classList.add('hidden');
+        btnSubmit.disabled = true;
+        document.querySelectorAll('.status-btn').forEach(function(b) {
+            b.classList.remove('ring-2', 'bg-primary/10');
+            b.style.borderColor = '';
+            b.style.color = '';
+        });
+    }
+
+    // Load jadwal hari ini
+    function loadJadwal() {
+        selJadwal.innerHTML = '<option value="">Memuat jadwal...</option>';
+        fetch('/api/jadwal/hari-ini')
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.status === 'ok' && res.data.length > 0) {
+                    selJadwal.innerHTML = '<option value="">Pilih jadwal...</option>';
+                    res.data.forEach(function(j) {
+                        var opt = document.createElement('option');
+                        opt.value = j.id;
+                        opt.dataset.kelasId = j.kelas_id;
+                        opt.textContent = j.nama_mk + ' (' + j.jam_mulai + '-' + j.jam_selesai + ') - ' + j.nama_kelas;
+                        selJadwal.appendChild(opt);
+                    });
+                } else {
+                    selJadwal.innerHTML = '<option value="">Tidak ada jadwal hari ini</option>';
+                }
+            })
+            .catch(function() {
+                selJadwal.innerHTML = '<option value="">Gagal memuat jadwal</option>';
+            });
+    }
+
+    // Load mahasiswa
+    function loadMahasiswa() {
+        fetch('/api/mahasiswa/list')
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.status === 'ok') {
+                    allMahasiswa = res.data;
+                    filterMahasiswa();
+                }
+            });
+    }
+
+    // Filter mahasiswa berdasarkan kelas dari jadwal yang dipilih
+    function filterMahasiswa() {
+        var selectedOpt = selJadwal.options[selJadwal.selectedIndex];
+        var kelasId = selectedOpt ? selectedOpt.dataset.kelasId : null;
+
+        selMhs.innerHTML = '<option value="">Pilih mahasiswa...</option>';
+        var filtered = kelasId ? allMahasiswa.filter(function(m) { return m.kelas_id == kelasId; }) : allMahasiswa;
+        filtered.forEach(function(m) {
+            var opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.nama + ' (' + m.nim + ') - ' + m.nama_kelas;
+            selMhs.appendChild(opt);
+        });
+    }
+
+    // Event: jadwal berubah → filter mahasiswa
+    selJadwal.addEventListener('change', function() {
+        filterMahasiswa();
+        checkValid();
+    });
+
+    selMhs.addEventListener('change', checkValid);
+
+    // Event: status button click
+    var statusColors = {
+        hadir: '#34d399', terlambat: '#f59e0b',
+        izin: '#60a5fa', sakit: '#fbbf24', alpha: '#f87171'
+    };
+
+    document.querySelectorAll('.status-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            selectedStatus = btn.dataset.status;
+            // Reset semua
+            document.querySelectorAll('.status-btn').forEach(function(b) {
+                b.classList.remove('ring-2');
+                b.style.borderColor = '';
+                b.style.color = '';
+                b.style.background = '';
+            });
+            // Aktifkan yang dipilih
+            var color = statusColors[selectedStatus] || '#888';
+            btn.style.borderColor = color;
+            btn.style.color = color;
+            btn.style.background = color + '15';
+            btn.classList.add('ring-2');
+
+            // Tampilkan alasan untuk izin/sakit
+            if (selectedStatus === 'izin' || selectedStatus === 'sakit') {
+                grpAlasan.classList.remove('hidden');
+            } else {
+                grpAlasan.classList.add('hidden');
+                inpAlasan.value = '';
+            }
+            checkValid();
+        });
+    });
+
+    function checkValid() {
+        var valid = selJadwal.value && selMhs.value && selectedStatus;
+        btnSubmit.disabled = !valid;
+    }
+
+    // Submit
+    btnSubmit.addEventListener('click', function() {
+        errDiv.classList.add('hidden');
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Menyimpan...';
+
+        fetch('/api/absensi/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: parseInt(selMhs.value),
+                jadwal_id: parseInt(selJadwal.value),
+                status: selectedStatus,
+                alasan: inpAlasan.value.trim()
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.status === 'ok') {
+                closeModal();
+                // Refresh halaman untuk update tabel
+                window.location.reload();
+            } else {
+                errText.textContent = res.pesan || 'Gagal menyimpan.';
+                errDiv.classList.remove('hidden');
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span> Simpan';
+            }
+        })
+        .catch(function() {
+            errText.textContent = 'Koneksi ke server gagal.';
+            errDiv.classList.remove('hidden');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span class="material-symbols-outlined text-[18px]">save</span> Simpan';
+        });
+    });
+
+    // Event listeners
+    btnOpen.addEventListener('click', openModal);
+    btnClose.addEventListener('click', closeModal);
+    btnCancel.addEventListener('click', closeModal);
+    overlay.addEventListener('click', closeModal);
+})();
+</script>
 {% endblock %}
