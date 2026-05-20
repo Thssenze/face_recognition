@@ -46,7 +46,7 @@ def train_model():
             cascade = cv2.CascadeClassifier(
                 cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
             )
-            detected = cascade.detectMultiScale(img, 1.3, 5)
+            detected = cascade.detectMultiScale(img, 1.1, 3, minSize=(30, 30))
 
             if len(detected) > 0:
                 # Ambil wajah pertama yang terdeteksi
@@ -55,10 +55,7 @@ def train_model():
                 face_roi = cv2.resize(face_roi, (200, 200))
                 faces.append(face_roi)
                 labels.append(user_id)
-            else:
-                # Kalau tidak ada deteksi, pakai seluruh gambar
-                faces.append(img)
-                labels.append(user_id)
+            # Foto tanpa wajah terdeteksi di-skip (jangan pakai full frame)
 
     if len(faces) == 0:
         print('[TRAINER] Tidak ada data wajah untuk training.')

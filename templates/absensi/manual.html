@@ -1,406 +1,101 @@
-<!DOCTYPE html>
+{% extends 'base.html' %}
+{% block title %}Absensi Manual - Sistem Absensi{% endblock %}
 
-<html class="dark" lang="id"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Absensi Manual - Biometric System</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "primary": "#8ed5ff",
-                        "surface": "#0f1418",
-                        "outline-variant": "#3e484f",
-                        "outline": "#87929a",
-                        "on-tertiary-fixed-variant": "#653e00",
-                        "on-error": "#690005",
-                        "on-background": "#dee3e8",
-                        "surface-container-lowest": "#0a0f12",
-                        "surface-container-high": "#252b2e",
-                        "on-primary-container": "#004965",
-                        "inverse-on-surface": "#2c3135",
-                        "inverse-primary": "#00668a",
-                        "surface-container-low": "#171c20",
-                        "on-secondary-fixed": "#111c2d",
-                        "on-secondary": "#263143",
-                        "on-primary": "#00354a",
-                        "surface-tint": "#7bd0ff",
-                        "on-tertiary-container": "#613b00",
-                        "on-surface": "#dee3e8",
-                        "tertiary-fixed": "#ffddb8",
-                        "tertiary": "#ffc176",
-                        "secondary-fixed": "#d8e3fb",
-                        "surface-container-highest": "#303539",
-                        "on-primary-fixed-variant": "#004c69",
-                        "background": "#0f1418",
-                        "surface-bright": "#343a3e",
-                        "primary-container": "#38bdf8",
-                        "on-primary-fixed": "#001e2c",
-                        "on-error-container": "#ffdad6",
-                        "surface-container": "#1b2024",
-                        "on-secondary-fixed-variant": "#3c475a",
-                        "tertiary-container": "#f1a02b",
-                        "surface-variant": "#303539",
-                        "error-container": "#93000a",
-                        "secondary": "#bcc7de",
-                        "on-secondary-container": "#aeb9d0",
-                        "inverse-surface": "#dee3e8",
-                        "primary-fixed-dim": "#7bd0ff",
-                        "tertiary-fixed-dim": "#ffb960",
-                        "secondary-container": "#3e495d",
-                        "primary-fixed": "#c4e7ff",
-                        "on-tertiary-fixed": "#2a1700",
-                        "secondary-fixed-dim": "#bcc7de",
-                        "on-surface-variant": "#bdc8d1",
-                        "error": "#ffb4ab",
-                        "surface-dim": "#0f1418",
-                        "on-tertiary": "#472a00"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "sidebar-width": "260px",
-                        "section-gap": "32px",
-                        "gutter": "16px",
-                        "container-margin": "24px",
-                        "card-padding": "20px"
-                    },
-                    "fontFamily": {
-                        "title-sm": ["Inter"],
-                        "display-lg-mobile": ["Inter"],
-                        "headline-md": ["Inter"],
-                        "body-sm": ["Inter"],
-                        "display-lg": ["Inter"],
-                        "label-caps": ["Inter"],
-                        "body-md": ["Inter"]
-                    },
-                    "fontSize": {
-                        "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
-                        "display-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
-                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
-                        "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
-                    }
-                },
-            },
-        }
-    </script>
-<style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        body {
-            background-color: #0f1418;
-            color: #dee3e8;
-            font-family: 'Inter', sans-serif;
-        }
-    </style>
-</head>
-<body class="bg-surface text-on-surface">
-<!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-screen w-[260px] bg-surface-container dark:bg-surface-container-low backdrop-blur-md bg-opacity-80 border-r border-outline-variant dark:border-outline-variant flex flex-col gap-4 py-8 px-4 z-50">
-<div class="mb-8 px-2">
-<h1 class="font-display-lg text-display-lg text-primary dark:text-primary font-bold tracking-tight">Admin Panel</h1>
-<p class="font-label-caps text-label-caps text-on-surface-variant opacity-70">Biometric System</p>
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+        <h2 class="font-headline-md text-headline-md text-on-surface">Absensi Manual</h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Override atau koreksi status absensi mahasiswa oleh admin.</p>
+    </div>
+    <a href="{{ url_for('absensi_rekap') }}" class="bg-surface-container border border-outline-variant text-on-surface px-5 py-2.5 rounded-lg flex items-center gap-2 font-title-sm hover:bg-surface-variant transition-all w-fit">
+        <span class="material-symbols-outlined text-[20px]">assignment</span>
+        Lihat Rekap
+    </a>
 </div>
-<nav class="flex flex-col gap-1">
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 hover:text-on-surface rounded-lg text-on-surface-variant" href="#">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-body-md text-body-md">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 hover:text-on-surface rounded-lg text-on-surface-variant" href="#">
-<span class="material-symbols-outlined">group</span>
-<span class="font-body-md text-body-md">Mahasiswa</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 hover:text-on-surface rounded-lg text-on-surface-variant" href="#">
-<span class="material-symbols-outlined">school</span>
-<span class="font-body-md text-body-md">Kelas &amp; MK</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 hover:text-on-surface rounded-lg text-on-surface-variant" href="#">
-<span class="material-symbols-outlined">calendar_month</span>
-<span class="font-body-md text-body-md">Jadwal</span>
-</a>
-<!-- Active State: Rekap Absensi (closet to Manual Attendance intent) -->
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out text-primary dark:text-primary font-bold border-l-4 border-primary bg-primary-container/5 rounded-r-lg" href="#">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
-<span class="font-body-md text-body-md">Rekap Absensi</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 transition-all duration-200 ease-in-out hover:bg-surface-variant/50 hover:text-on-surface rounded-lg text-on-surface-variant" href="#">
-<span class="material-symbols-outlined">assessment</span>
-<span class="font-body-md text-body-md">Laporan</span>
-</a>
-</nav>
-<div class="mt-auto pt-8 border-t border-outline-variant flex items-center gap-3 px-2">
-<img alt="Admin Avatar" class="w-10 h-10 rounded-full border border-outline" data-alt="A professional headshot of a university administrator in his late 40s wearing a crisp white shirt and a dark navy blazer. The lighting is bright and clean, typical of a corporate studio setting. The background is a soft, out-of-focus modern office space with subtle blue and grey tones matching the dark UI theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmKZctf0KjFtbJ6oaG7tHTUcu6Phd9J4qyROk3aYXry-fxgmn8RVz-FUWRUw0MdSdnG-3TkvjkFJTieCbplSbsakaKLysuvzc0tytO-FBEMc-eiyphV-55l4t8yIMvwJ50CEriRf-tWyYAucXbNmsdqH9wDnnsQckGxCFCRfOpbkKfrsgmaK9xcLm8cX4J3NGJcDYNd9-RlLYXd0VzKrYmYHopYWTC4bA7z0KsBu55tyODto9djoOZy0Ymm_lQe1TMpdxxFc9_TfUO"/>
-<div>
-<p class="font-body-sm text-body-sm font-bold text-on-surface">University Admin</p>
-<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Super Administrator</p>
+
+<!-- Info banner -->
+<div class="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 flex items-start gap-3">
+    <span class="material-symbols-outlined text-primary mt-0.5">info</span>
+    <div>
+        <p class="font-body-md font-semibold text-primary">Absensi Manual Hari Ini</p>
+        <p class="text-body-sm text-on-surface-variant mt-1">Pilih status baru lalu klik Simpan. Perubahan akan dicatat sebagai input manual.</p>
+    </div>
 </div>
+
+<!-- Tabel Override -->
+<div class="bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden shadow-2xl">
+    <div class="px-6 py-4 border-b border-outline-variant bg-surface-container-high/30">
+        <h4 class="font-title-sm text-title-sm text-on-surface">Daftar Absensi Hari Ini</h4>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-high/50">
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Mahasiswa</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">NIM</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Mata Kuliah</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Waktu</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Status Saat Ini</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Ubah Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant">
+                {% for a in rekap %}
+                <tr class="hover:bg-surface-variant/20 transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary font-bold text-xs">
+                                {{ a.nama[:2]|upper }}
+                            </div>
+                            <div>
+                                <p class="font-body-md text-on-surface font-semibold">{{ a.nama }}</p>
+                                <p class="text-[11px] text-on-surface-variant">{{ a.nama_kelas }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface-variant font-mono">{{ a.nim }}</td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface-variant">{{ a.nama_mk }}</td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface-variant">{{ a.waktu_absen or '-' }}</td>
+                    <td class="px-6 py-4">
+                        {% if a.status == 'hadir' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Hadir</span>
+                        {% elif a.status == 'terlambat' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-tertiary/10 text-tertiary border border-tertiary/20">Terlambat</span>
+                        {% elif a.status == 'izin' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">Izin</span>
+                        {% elif a.status == 'alpha' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-error/10 text-error border border-error/20">Alpha</span>
+                        {% endif %}
+                        {% if a.dibuat_manual %}
+                        <span class="ml-1 text-[9px] text-outline italic">manual</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        <form method="POST" class="flex items-center gap-2">
+                            <input type="hidden" name="absensi_id" value="{{ a.id }}">
+                            <select name="status" class="bg-surface-dim border border-outline-variant text-on-surface rounded-lg px-3 py-1.5 text-xs focus:border-primary outline-none">
+                                <option value="hadir"     {% if a.status=='hadir' %}selected{% endif %}>Hadir</option>
+                                <option value="terlambat" {% if a.status=='terlambat' %}selected{% endif %}>Terlambat</option>
+                                <option value="izin"      {% if a.status=='izin' %}selected{% endif %}>Izin</option>
+                                <option value="alpha"     {% if a.status=='alpha' %}selected{% endif %}>Alpha</option>
+                            </select>
+                            <button type="submit" class="bg-primary-container text-on-primary-container px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 transition-all">
+                                Simpan
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-16 text-center">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant/20 mb-2">event_busy</span>
+                        <p class="text-body-sm text-on-surface-variant">Belum ada absensi hari ini yang bisa diubah.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-</aside>
-<!-- TopAppBar -->
-<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant dark:border-outline-variant flex justify-between items-center h-16 px-gutter">
-<div class="flex items-center gap-4 flex-1">
-<div class="relative w-full max-w-md focus-within:ring-2 focus-within:ring-primary rounded-lg">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-<input class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-2 pl-10 pr-4 text-body-sm focus:outline-none" placeholder="Cari data absensi..." type="text"/>
-</div>
-</div>
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-4">
-<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">notifications</button>
-<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">settings</button>
-<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">account_circle</button>
-</div>
-<div class="h-8 w-[1px] bg-outline-variant"></div>
-<span class="font-title-sm text-title-sm font-bold text-on-surface">Attendance Management</span>
-</div>
-</header>
-<!-- Main Content Canvas -->
-<main class="ml-[260px] pt-24 px-gutter pb-12">
-<div class="max-w-7xl mx-auto space-y-8">
-<!-- Page Header -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-<div>
-<nav class="flex text-label-caps text-outline mb-2 gap-2">
-<span>Dashboard</span>
-<span>/</span>
-<span class="text-primary">Absensi Manual</span>
-</nav>
-<h2 class="font-headline-md text-headline-md text-on-surface">Input Absensi Manual</h2>
-<p class="text-body-md text-on-surface-variant">Lakukan koreksi atau input data kehadiran mahasiswa jika terjadi kendala pada sistem biometrik.</p>
-</div>
-<div class="flex gap-3">
-<button class="px-6 py-2 border border-primary text-primary rounded-lg font-bold hover:bg-primary/10 transition-all text-body-sm">
-                        Batal
-                    </button>
-<button class="px-6 py-2 bg-primary text-surface-container-lowest rounded-lg font-bold hover:bg-primary-container transition-all text-body-sm flex items-center gap-2">
-<span class="material-symbols-outlined text-[18px]">save</span>
-                        Simpan Perubahan
-                    </button>
-</div>
-</div>
-<!-- Bento Layout Grid -->
-<div class="grid grid-cols-12 gap-6">
-<!-- Left Column: Form (8 Cols) -->
-<div class="col-span-12 lg:col-span-8 space-y-6">
-<div class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding shadow-lg">
-<h3 class="font-title-sm text-title-sm text-on-surface mb-6 border-b border-outline-variant pb-4">Formulir Koreksi Data</h3>
-<form class="space-y-6">
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-<!-- Student Selection -->
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-outline uppercase">Mahasiswa</label>
-<div class="relative">
-<select class="w-full bg-surface border border-outline-variant rounded-lg py-3 px-4 text-body-md appearance-none focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
-<option>Pilih Mahasiswa</option>
-<option>Budi Santoso - 2021001</option>
-<option>Siti Aminah - 2021045</option>
-<option>Rizky Pratama - 2021112</option>
-</select>
-<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
-</div>
-</div>
-<!-- Schedule/Subject -->
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-outline uppercase">Mata Kuliah / Jadwal</label>
-<div class="relative">
-<select class="w-full bg-surface border border-outline-variant rounded-lg py-3 px-4 text-body-md appearance-none focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all">
-<option>Pilih Mata Kuliah</option>
-<option>Struktur Data (R-001)</option>
-<option>Basis Data (R-004)</option>
-<option>Kecerdasan Buatan (R-002)</option>
-</select>
-<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-outline">expand_more</span>
-</div>
-</div>
-<!-- Date Selection -->
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-outline uppercase">Tanggal Absensi</label>
-<div class="relative">
-<input class="w-full bg-surface border border-outline-variant rounded-lg py-3 px-4 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="date"/>
-</div>
-</div>
-<!-- Attendance Status -->
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-outline uppercase">Status Kehadiran</label>
-<div class="grid grid-cols-2 gap-2">
-<label class="flex items-center gap-3 p-3 bg-surface border border-outline-variant rounded-lg cursor-pointer hover:border-primary/50 transition-all group">
-<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary" name="status" type="radio"/>
-<span class="text-body-sm group-hover:text-primary transition-colors">Hadir</span>
-</label>
-<label class="flex items-center gap-3 p-3 bg-surface border border-outline-variant rounded-lg cursor-pointer hover:border-primary/50 transition-all group">
-<input class="w-4 h-4 text-tertiary bg-surface border-outline-variant focus:ring-primary" name="status" type="radio"/>
-<span class="text-body-sm group-hover:text-tertiary transition-colors">Terlambat</span>
-</label>
-<label class="flex items-center gap-3 p-3 bg-surface border border-outline-variant rounded-lg cursor-pointer hover:border-primary/50 transition-all group">
-<input class="w-4 h-4 text-secondary bg-surface border-outline-variant focus:ring-primary" name="status" type="radio"/>
-<span class="text-body-sm group-hover:text-secondary transition-colors">Izin</span>
-</label>
-<label class="flex items-center gap-3 p-3 bg-surface border border-outline-variant rounded-lg cursor-pointer hover:border-primary/50 transition-all group">
-<input class="w-4 h-4 text-error bg-surface border-outline-variant focus:ring-primary" name="status" type="radio"/>
-<span class="text-body-sm group-hover:text-error transition-colors">Alpha</span>
-</label>
-</div>
-</div>
-</div>
-<!-- Reason Area -->
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-outline uppercase">Alasan Koreksi</label>
-<textarea class="w-full bg-surface border border-outline-variant rounded-lg py-3 px-4 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none" placeholder="Jelaskan alasan penginputan manual (contoh: Wajah tidak terdeteksi, Gangguan Jaringan, dll)" rows="4"></textarea>
-</div>
-<div class="flex items-center gap-2 p-4 bg-primary-container/10 border border-primary/20 rounded-lg">
-<span class="material-symbols-outlined text-primary">info</span>
-<p class="text-body-sm text-primary">Setiap perubahan data manual akan dicatat dalam log audit sistem untuk keperluan verifikasi akademik.</p>
-</div>
-</form>
-</div>
-</div>
-<!-- Right Column: History & Stats (4 Cols) -->
-<div class="col-span-12 lg:col-span-4 space-y-6">
-<!-- Quick Stats Card -->
-<div class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding">
-<h3 class="font-title-sm text-title-sm text-on-surface mb-4">Ringkasan Hari Ini</h3>
-<div class="space-y-4">
-<div class="flex justify-between items-center p-3 bg-surface border border-outline-variant rounded-lg">
-<span class="text-body-sm text-on-surface-variant">Input Manual</span>
-<span class="font-bold text-primary">12 Siswa</span>
-</div>
-<div class="flex justify-between items-center p-3 bg-surface border border-outline-variant rounded-lg">
-<span class="text-body-sm text-on-surface-variant">Sengketa Data</span>
-<span class="font-bold text-tertiary">3 Kasus</span>
-</div>
-</div>
-</div>
-<!-- Recent Adjustments List -->
-<div class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding overflow-hidden">
-<div class="flex justify-between items-center mb-6">
-<h3 class="font-title-sm text-title-sm text-on-surface">Riwayat Perubahan</h3>
-<button class="text-primary text-label-caps hover:underline">Lihat Semua</button>
-</div>
-<div class="space-y-4">
-<!-- History Item 1 -->
-<div class="flex gap-4 p-3 border-b border-outline-variant/30 last:border-0 hover:bg-surface-variant/20 rounded-lg transition-colors">
-<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">person_edit</span>
-</div>
-<div>
-<p class="text-body-sm font-bold text-on-surface">Deni Kurniawan</p>
-<p class="text-[12px] text-on-surface-variant">MK: Kalkulus • Hadir</p>
-<p class="text-[10px] text-outline mt-1 italic">"Gagal Scan: Kondisi Cahaya"</p>
-</div>
-<div class="ml-auto text-right shrink-0">
-<p class="text-[10px] text-outline">10:24 AM</p>
-</div>
-</div>
-<!-- History Item 2 -->
-<div class="flex gap-4 p-3 border-b border-outline-variant/30 last:border-0 hover:bg-surface-variant/20 rounded-lg transition-colors">
-<div class="w-10 h-10 rounded-full bg-tertiary/10 flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-tertiary text-[20px]" style="font-variation-settings: 'FILL' 1;">history</span>
-</div>
-<div>
-<p class="text-body-sm font-bold text-on-surface">Sisca Kohl</p>
-<p class="text-[12px] text-on-surface-variant">MK: Algoritma • Terlambat</p>
-<p class="text-[10px] text-outline mt-1 italic">"Sistem Error di Gerbang 2"</p>
-</div>
-<div class="ml-auto text-right shrink-0">
-<p class="text-[10px] text-outline">09:15 AM</p>
-</div>
-</div>
-<!-- History Item 3 -->
-<div class="flex gap-4 p-3 border-b border-outline-variant/30 last:border-0 hover:bg-surface-variant/20 rounded-lg transition-colors">
-<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">person_edit</span>
-</div>
-<div>
-<p class="text-body-sm font-bold text-on-surface">Agus Salim</p>
-<p class="text-[12px] text-on-surface-variant">MK: Pemrograman Web • Hadir</p>
-<p class="text-[10px] text-outline mt-1 italic">"Koreksi oleh Admin Prodi"</p>
-</div>
-<div class="ml-auto text-right shrink-0">
-<p class="text-[10px] text-outline">08:45 AM</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Visual Accent Card -->
-<div class="relative overflow-hidden bg-slate-900 rounded-xl h-48 border border-outline-variant group">
-<div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent z-10"></div>
-<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A detailed close-up of a digital attendance dashboard displayed on a high-resolution professional monitor. The screen shows complex data visualizations including bar charts and heatmaps in vibrant sky blue and emerald green against a deep navy background. The lighting is low and atmospheric, emphasizing the technical precision and modern corporate aesthetic of the biometric system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQMghRPkubyf2QxrY1PLr5pwsidEWbopd_YzXa-nKfqOQe1Xv4PTqPSnTWYTtLSWZCzKSXNBhJALLt99QHH2XzJr7H2aCVzOq6iquKltLBAzu338Zl1ZziCfIQCEqTrYf7tBftWlY4aXbKMnZdAuspnzPxEXIQ5EFd4SogSN4sZOrr6LWxQpDAG9Omo219DWKDcEtIDISNrg6u8QUY-hAynNJwTaIP2pmaOFqr9BkVCREc9zSfKdloJZsSXMtmsgs4U9RaZp3AjCeN"/>
-<div class="absolute bottom-4 left-4 z-20">
-<p class="text-label-caps text-primary">Sistem Monitoring</p>
-<p class="font-bold text-on-surface">Data Integritas Tinggi</p>
-</div>
-</div>
-</div>
-</div>
-<!-- Full Width History Table (Hidden on Mobile) -->
-<div class="hidden md:block bg-surface-container-low border border-outline-variant rounded-xl overflow-hidden">
-<div class="px-card-padding py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-highest/20">
-<h3 class="font-title-sm text-title-sm text-on-surface">Daftar Penyesuaian Terakhir</h3>
-<div class="flex gap-2">
-<button class="p-2 hover:bg-surface-variant rounded-lg transition-colors">
-<span class="material-symbols-outlined text-[20px]">filter_list</span>
-</button>
-<button class="p-2 hover:bg-surface-variant rounded-lg transition-colors">
-<span class="material-symbols-outlined text-[20px]">download</span>
-</button>
-</div>
-</div>
-<table class="w-full text-left">
-<thead>
-<tr class="bg-surface-container">
-<th class="px-6 py-4 font-label-caps text-outline uppercase tracking-wider">Tanggal</th>
-<th class="px-6 py-4 font-label-caps text-outline uppercase tracking-wider">Nama Mahasiswa</th>
-<th class="px-6 py-4 font-label-caps text-outline uppercase tracking-wider">Mata Kuliah</th>
-<th class="px-6 py-4 font-label-caps text-outline uppercase tracking-wider">Status</th>
-<th class="px-6 py-4 font-label-caps text-outline uppercase tracking-wider">Oleh</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-outline-variant/30">
-<tr class="hover:bg-surface-variant/10 transition-colors">
-<td class="px-6 py-4 text-body-sm">24 Okt 2023</td>
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-[10px]">BK</div>
-<span class="text-body-sm font-bold">Bambang Kusuma</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm">Manajemen Proyek TI</td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-[12px] font-bold">Hadir</span>
-</td>
-<td class="px-6 py-4 text-body-sm text-outline">Admin_Rektorat</td>
-</tr>
-<tr class="hover:bg-surface-variant/10 transition-colors">
-<td class="px-6 py-4 text-body-sm">24 Okt 2023</td>
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-secondary/20 text-secondary flex items-center justify-center font-bold text-[10px]">LD</div>
-<span class="text-body-sm font-bold">Laras Dewi</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm">E-Commerce</td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-[12px] font-bold">Izin</span>
-</td>
-<td class="px-6 py-4 text-body-sm text-outline">Admin_Prodi</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</main>
-</body></html>
+{% endblock %}

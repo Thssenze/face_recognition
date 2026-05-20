@@ -12,7 +12,10 @@
 
 <div class="max-w-lg">
     <h2 class="font-headline-md text-headline-md text-on-surface mb-2">Tambah Jadwal Baru</h2>
-    <p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Batas terlambat otomatis dihitung: jam_mulai + 15 menit.</p>
+    <p class="font-body-sm text-body-sm text-on-surface-variant mb-8">
+        Pilih kelas terlebih dahulu, kemudian pilih mata kuliah untuk kelas tersebut.
+        Batas terlambat otomatis: jam_mulai + 15 menit.
+    </p>
 
     {% if error %}
     <div class="bg-error-container/20 border border-error/30 rounded-lg p-3 mb-6 flex items-center gap-2">
@@ -21,19 +24,39 @@
     </div>
     {% endif %}
 
-    <form method="POST" class="space-y-6">
+    <form method="POST" class="space-y-6" id="formJadwal">
+        <!-- Pilih Kelas -->
         <div class="space-y-2">
-            <label class="font-label-caps text-label-caps text-on-surface-variant" for="matakuliah_id">MATA KULIAH</label>
+            <label class="font-label-caps text-label-caps text-on-surface-variant" for="kelas_id">KELAS</label>
             <select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
-                    id="matakuliah_id" name="matakuliah_id" required>
-                <option value="">-- Pilih Mata Kuliah --</option>
-                {% for mk in daftar_mk %}
-                <option value="{{ mk.id }}" {% if request.form.get('matakuliah_id')|int == mk.id %}selected{% endif %}>
-                    {{ mk.nama_mk }} ({{ mk.kode_mk }}) - {{ mk.nama_kelas }}
+                    id="kelas_id" name="kelas_id" required>
+                <option value="">-- Pilih Kelas --</option>
+                {% for k in daftar_kelas %}
+                <option value="{{ k.id }}" {% if request.form.get('kelas_id')|int == k.id %}selected{% endif %}>
+                    {{ k.nama_kelas }} ({{ k.angkatan }})
                 </option>
                 {% endfor %}
             </select>
         </div>
+
+        <!-- Pilih MK (difilter berdasarkan kelas via JS) -->
+        <div class="space-y-2">
+            <label class="font-label-caps text-label-caps text-on-surface-variant" for="matakuliah_id">MATA KULIAH</label>
+            <select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
+                    id="matakuliah_id" name="matakuliah_id" required>
+                <option value="">-- Pilih Kelas dulu --</option>
+                {% for mk in daftar_mk %}
+                <option value="{{ mk.id }}"
+                        data-kelas="{{ mk.kelas_id }}"
+                        {% if request.form.get('matakuliah_id')|int == mk.id %}selected{% endif %}
+                        class="mk-option">
+                    {{ mk.nama_mk }} ({{ mk.kode_mk }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Hari -->
         <div class="space-y-2">
             <label class="font-label-caps text-label-caps text-on-surface-variant" for="hari">HARI</label>
             <select class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface rounded-lg px-4 py-3 focus:ring-2 focus:ring-primary-container transition-all outline-none font-body-md"
@@ -44,6 +67,8 @@
                 {% endfor %}
             </select>
         </div>
+
+        <!-- Jam Mulai & Selesai -->
         <div class="grid grid-cols-2 gap-4">
             <div class="space-y-2">
                 <label class="font-label-caps text-label-caps text-on-surface-variant" for="jam_mulai">JAM MULAI</label>
@@ -56,6 +81,7 @@
                        id="jam_selesai" name="jam_selesai" type="time" value="{{ request.form.get('jam_selesai', '') }}" required/>
             </div>
         </div>
+
         <div class="flex gap-3 pt-4">
             <button type="submit" class="bg-primary-container text-on-primary-container px-6 py-3 rounded-lg font-title-sm flex items-center gap-2 hover:brightness-110 transition-all">
                 <span class="material-symbols-outlined">save</span> Tambah Jadwal
@@ -64,4 +90,35 @@
         </div>
     </form>
 </div>
+
+<script>
+// Filter MK berdasarkan kelas yang dipilih
+(function() {
+    var kelasSelect = document.getElementById('kelas_id');
+    var mkSelect    = document.getElementById('matakuliah_id');
+    var allOptions  = Array.from(mkSelect.querySelectorAll('.mk-option'));
+
+    function filterMK() {
+        var selectedKelas = kelasSelect.value;
+        // Reset MK
+        mkSelect.innerHTML = '<option value="">-- Pilih Mata Kuliah --</option>';
+        if (!selectedKelas) return;
+        var found = false;
+        allOptions.forEach(function(opt) {
+            if (opt.dataset.kelas === selectedKelas) {
+                mkSelect.appendChild(opt.cloneNode(true));
+                found = true;
+            }
+        });
+        if (!found) {
+            mkSelect.innerHTML = '<option value="">-- Belum ada MK untuk kelas ini --</option>';
+        }
+    }
+
+    kelasSelect.addEventListener('change', filterMK);
+
+    // Jalankan saat load jika kelas sudah dipilih (POST error restore)
+    if (kelasSelect.value) filterMK();
+})();
+</script>
 {% endblock %}

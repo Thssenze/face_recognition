@@ -1,395 +1,264 @@
-<!DOCTYPE html>
+{% extends 'base.html' %}
+{% block title %}Rekap Absensi - Sistem Absensi{% endblock %}
 
-<html class="dark" lang="id"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Rekap Absensi - Sistem Absensi</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "surface-dim": "#0f1418",
-                    "on-surface": "#dee3e8",
-                    "error": "#ffb4ab",
-                    "on-tertiary-fixed": "#2a1700",
-                    "on-background": "#dee3e8",
-                    "outline": "#87929a",
-                    "on-secondary-fixed-variant": "#3c475a",
-                    "surface-container-low": "#171c20",
-                    "outline-variant": "#3e484f",
-                    "on-secondary-container": "#aeb9d0",
-                    "primary-fixed-dim": "#7bd0ff",
-                    "on-tertiary-container": "#613b00",
-                    "tertiary": "#ffc176",
-                    "on-tertiary-fixed-variant": "#653e00",
-                    "background": "#0f1418",
-                    "surface-container-lowest": "#0a0f12",
-                    "error-container": "#93000a",
-                    "inverse-surface": "#dee3e8",
-                    "inverse-on-surface": "#2c3135",
-                    "on-primary-container": "#004965",
-                    "primary-fixed": "#c4e7ff",
-                    "secondary-fixed-dim": "#bcc7de",
-                    "primary": "#8ed5ff",
-                    "on-error-container": "#ffdad6",
-                    "on-primary": "#00354a",
-                    "surface-container": "#1b2024",
-                    "on-secondary-fixed": "#111c2d",
-                    "surface-container-high": "#252b2e",
-                    "secondary-container": "#3e495d",
-                    "surface": "#0f1418",
-                    "on-primary-fixed-variant": "#004c69",
-                    "surface-bright": "#343a3e",
-                    "tertiary-container": "#f1a02b",
-                    "on-error": "#690005",
-                    "inverse-primary": "#00668a",
-                    "surface-variant": "#303539",
-                    "on-tertiary": "#472a00",
-                    "tertiary-fixed": "#ffddb8",
-                    "tertiary-fixed-dim": "#ffb960",
-                    "primary-container": "#38bdf8",
-                    "on-primary-fixed": "#001e2c",
-                    "surface-tint": "#7bd0ff",
-                    "on-surface-variant": "#bdc8d1",
-                    "on-secondary": "#263143",
-                    "secondary-fixed": "#d8e3fb",
-                    "surface-container-highest": "#303539",
-                    "secondary": "#bcc7de"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.25rem",
-                    "lg": "0.5rem",
-                    "xl": "0.75rem",
-                    "full": "9999px"
-            },
-            "spacing": {
-                    "gutter": "16px",
-                    "sidebar-width": "260px",
-                    "container-margin": "24px",
-                    "section-gap": "32px",
-                    "card-padding": "20px"
-            },
-            "fontFamily": {
-                    "headline-md": ["Inter"],
-                    "display-lg": ["Inter"],
-                    "body-md": ["Inter"],
-                    "label-caps": ["Inter"],
-                    "title-sm": ["Inter"],
-                    "body-sm": ["Inter"]
-            },
-            "fontSize": {
-                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                    "display-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-                    "title-sm": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
-                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
-            }
-          },
-        },
-      }
-    </script>
-<style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f1418; color: #dee3e8; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .glass-effect { backdrop-filter: blur(12px); }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f1418; }
-        ::-webkit-scrollbar-thumb { background: #3e484f; border-radius: 3px; }
-    </style>
-</head>
-<body class="bg-surface-dim selection:bg-primary-container selection:text-on-primary-container">
-<!-- Sidebar Navigation -->
-<aside class="fixed left-0 top-0 h-screen w-[260px] bg-surface-container dark:bg-surface-container-low backdrop-blur-md bg-opacity-80 border-r border-outline-variant dark:border-outline-variant flex flex-col gap-4 py-8 px-4 z-50">
-<div class="px-2 mb-6">
-<h1 class="font-display-lg text-display-lg text-primary dark:text-primary font-bold tracking-tight">Admin Panel</h1>
-<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-widest mt-1">Biometric System</p>
+{% block content %}
+<!-- Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+    <div>
+        <h2 class="font-headline-md text-headline-md text-on-surface">Rekap Absensi</h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">Monitoring dan analisis data kehadiran mahasiswa.</p>
+    </div>
+    <div class="flex gap-3">
+        <a href="{{ url_for('absensi_export', format='csv') }}{{ filter_query }}"
+           class="bg-surface-container border border-outline-variant text-on-surface px-5 py-2.5 rounded-lg flex items-center gap-2 font-title-sm hover:bg-surface-variant transition-all">
+            <span class="material-symbols-outlined text-[20px]">download</span>
+            Export CSV
+        </a>
+        <a href="{{ url_for('absensi_export', format='xlsx') }}{{ filter_query }}"
+           class="bg-primary-container text-on-primary-container px-5 py-2.5 rounded-lg flex items-center gap-2 font-title-sm hover:brightness-110 transition-all shadow-lg shadow-primary-container/20">
+            <span class="material-symbols-outlined text-[20px]">download</span>
+            Unduh Laporan
+        </a>
+    </div>
 </div>
-<nav class="flex flex-col gap-1">
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200" href="#">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-body-md text-body-md">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200" href="#">
-<span class="material-symbols-outlined">group</span>
-<span class="font-body-md text-body-md">Mahasiswa</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200" href="#">
-<span class="material-symbols-outlined">school</span>
-<span class="font-body-md text-body-md">Kelas &amp; MK</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200" href="#">
-<span class="material-symbols-outlined">calendar_month</span>
-<span class="font-body-md text-body-md">Jadwal</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-primary dark:text-primary font-bold border-l-4 border-primary bg-primary-container/5 transition-all duration-200" href="#">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
-<span class="font-body-md text-body-md">Rekap Absensi</span>
-</a>
-<a class="flex items-center gap-3 py-3 px-4 rounded-lg text-on-surface-variant hover:bg-surface-variant/50 hover:text-on-surface transition-all duration-200" href="#">
-<span class="material-symbols-outlined">assessment</span>
-<span class="font-body-md text-body-md">Laporan</span>
-</a>
-</nav>
-<div class="mt-auto pt-4 border-t border-outline-variant flex items-center gap-3 px-2">
-<img alt="University Admin Profile" class="w-10 h-10 rounded-full border border-outline" data-alt="A professional headshot of a university administrator with a friendly expression. He is wearing a dark navy suit and a light blue tie. The background is a blurred office environment with modern architecture and soft, professional lighting. The image style is sharp, clean, and corporate to match the administrative interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2_1joFd7Cwzo5PeJEIje_OJBy2EFdn2hA5PyeZZ7UYSAF2mnDyZPEZHQqAaX5uLUD1ZJlcpvPwpGSL0eC-O8Gap057Rq8GYNV_kr7Ig0xlq9qRzikfUlpmocNw8B1ktzXcOENpgN0KC14bFDV8hSKTvN1YjE8LY2UYZS_x4CNVG_c-PX1WL6NFB8aLkIpLitWiOWSHb39iVoxXtlR8cUDj2jXezxxsK474PRlfnL0ScJgQ-7WsbOyPvBnm2WEcS5_9ydwZCkSyZ-1"/>
-<div>
-<p class="font-title-sm text-title-sm text-on-surface">Dr. Hendra</p>
-<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Super Admin</p>
-</div>
-</div>
-</aside>
-<!-- Top App Bar -->
-<header class="fixed top-0 right-0 w-[calc(100%-260px)] z-40 bg-surface/80 dark:bg-surface/80 backdrop-blur-md border-b border-outline-variant dark:border-outline-variant flex justify-between items-center h-16 px-gutter ml-auto">
-<div class="flex items-center gap-4 bg-surface-container-low px-4 py-1.5 rounded-full border border-outline-variant w-96 focus-within:ring-2 focus-within:ring-primary transition-all">
-<span class="material-symbols-outlined text-on-surface-variant">search</span>
-<input class="bg-transparent border-none focus:ring-0 text-body-sm text-on-surface w-full placeholder:text-outline" placeholder="Search attendance record..." type="text"/>
-</div>
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-4">
-<button class="relative text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">notifications</span>
-<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">settings</span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors">
-<span class="material-symbols-outlined">account_circle</span>
-</button>
-</div>
-</div>
-</header>
-<!-- Main Content -->
-<main class="ml-[260px] pt-24 px-8 pb-12 min-h-screen">
-<div class="flex justify-between items-end mb-8">
-<div>
-<h2 class="font-headline-md text-headline-md text-on-surface">Rekap Absensi</h2>
-<p class="text-on-surface-variant font-body-sm">Monitoring and analysis of student attendance records.</p>
-</div>
-<button class="flex items-center gap-2 bg-primary-container text-on-primary-fixed px-6 py-2.5 rounded-lg font-bold hover:brightness-110 transition-all shadow-lg shadow-primary/10">
-<span class="material-symbols-outlined text-[20px]">download</span>
-<span>Unduh Laporan</span>
-</button>
-</div>
-<!-- Filter Section -->
+
 <section class="bg-surface-container-low border border-outline-variant rounded-xl p-card-padding mb-8">
-<div class="flex items-center gap-2 mb-4">
-<span class="material-symbols-outlined text-primary">filter_list</span>
-<h3 class="font-title-sm text-title-sm text-on-surface">Filter Data</h3>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-on-surface-variant">Kelas</label>
-<select class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none appearance-none">
-<option>Semua Kelas</option>
-<option>IF-1A</option>
-<option>IF-1B</option>
-<option>IF-2A</option>
-</select>
-</div>
-<div class="space-y-2">
-<label class="font-label-caps text-label-caps text-on-surface-variant">Mata Kuliah</label>
-<select class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none appearance-none">
-<option>Semua MK</option>
-<option>Kecerdasan Buatan</option>
-<option>Pemrograman Web</option>
-<option>Basis Data</option>
-</select>
-</div>
-<div class="space-y-2 md:col-span-2">
-<label class="font-label-caps text-label-caps text-on-surface-variant">Rentang Tanggal</label>
-<div class="flex items-center gap-3">
-<input class="flex-1 bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary outline-none" type="date"/>
-<span class="text-outline">to</span>
-<input class="flex-1 bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary outline-none" type="date"/>
-</div>
-</div>
-</div>
+    <div class="flex items-center gap-2 mb-5">
+        <span class="material-symbols-outlined text-primary">filter_list</span>
+        <h3 class="font-title-sm text-title-sm text-on-surface">Filter Data</h3>
+    </div>
+    <form method="GET" class="space-y-4">
+        <!-- Baris 1: Kelas & MK -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant">Kelas</label>
+                <select name="kelas_id" class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none">
+                    <option value="">Semua Kelas</option>
+                    {% for k in daftar_kelas %}
+                    <option value="{{ k.id }}" {% if filter_kelas == k.id %}selected{% endif %}>{{ k.nama_kelas }} ({{ k.angkatan }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant">Mata Kuliah</label>
+                <select name="matakuliah_id" class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none">
+                    <option value="">Semua MK</option>
+                    {% for mk in daftar_mk %}
+                    <option value="{{ mk.id }}" {% if filter_mk == mk.id %}selected{% endif %}>{{ mk.nama_mk }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <!-- Baris 2: Tanggal + Tombol -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant">Tanggal Dari</label>
+                <input type="date" name="dari" value="{{ filter_dari or '' }}"
+                       class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary outline-none"/>
+            </div>
+            <div class="space-y-2">
+                <label class="font-label-caps text-label-caps text-on-surface-variant">Tanggal Sampai</label>
+                <input type="date" name="sampai" value="{{ filter_sampai or '' }}"
+                       class="w-full bg-surface-dim border border-outline-variant rounded-lg px-4 py-2 text-body-sm focus:border-primary outline-none"/>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="bg-primary-container text-on-primary-container px-5 py-2 rounded-lg font-title-sm hover:brightness-110 transition-all flex-1 flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">filter_alt</span> Filter
+                </button>
+                <a href="{{ url_for('absensi_rekap') }}" class="px-4 py-2 rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-variant transition-colors flex items-center" title="Reset filter">
+                    <span class="material-symbols-outlined text-[18px]">refresh</span>
+                </a>
+            </div>
+        </div>
+    </form>
 </section>
+
 <!-- Summary Cards -->
+
+
 <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-<div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-primary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-primary/10 rounded-lg text-primary">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-</div>
-<span class="text-primary font-bold text-headline-md">1,284</span>
-</div>
-<h4 class="font-label-caps text-label-caps text-on-surface-variant">Hadir</h4>
-<p class="text-[10px] text-primary mt-1">+12% from last week</p>
-</div>
-<div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-tertiary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-tertiary/10 rounded-lg text-tertiary">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
-</div>
-<span class="text-tertiary font-bold text-headline-md">42</span>
-</div>
-<h4 class="font-label-caps text-label-caps text-on-surface-variant">Terlambat</h4>
-<p class="text-[10px] text-tertiary mt-1">-5% from last week</p>
-</div>
-<div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-secondary/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-secondary/10 rounded-lg text-secondary">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">info</span>
-</div>
-<span class="text-secondary font-bold text-headline-md">18</span>
-</div>
-<h4 class="font-label-caps text-label-caps text-on-surface-variant">Izin</h4>
-<p class="text-[10px] text-secondary mt-1">Stable</p>
-</div>
-<div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-error/50 transition-colors">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-error/10 rounded-lg text-error">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cancel</span>
-</div>
-<span class="text-error font-bold text-headline-md">09</span>
-</div>
-<h4 class="font-label-caps text-label-caps text-on-surface-variant">Alpha</h4>
-<p class="text-[10px] text-error mt-1">+2 cases today</p>
-</div>
+    <div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-primary/50 transition-colors">
+        <div class="flex justify-between items-start mb-4">
+            <div class="p-2 bg-primary/10 rounded-lg text-primary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+            </div>
+            <span class="text-primary font-bold text-headline-md">{{ ringkasan.hadir }}</span>
+        </div>
+        <h4 class="font-label-caps text-label-caps text-on-surface-variant">Hadir</h4>
+    </div>
+    <div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-tertiary/50 transition-colors">
+        <div class="flex justify-between items-start mb-4">
+            <div class="p-2 bg-tertiary/10 rounded-lg text-tertiary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">schedule</span>
+            </div>
+            <span class="text-tertiary font-bold text-headline-md">{{ ringkasan.terlambat }}</span>
+        </div>
+        <h4 class="font-label-caps text-label-caps text-on-surface-variant">Terlambat</h4>
+    </div>
+    <div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-secondary/50 transition-colors">
+        <div class="flex justify-between items-start mb-4">
+            <div class="p-2 bg-secondary/10 rounded-lg text-secondary">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">info</span>
+            </div>
+            <span class="text-secondary font-bold text-headline-md">{{ ringkasan.izin }}</span>
+        </div>
+        <h4 class="font-label-caps text-label-caps text-on-surface-variant">Izin</h4>
+    </div>
+    <div class="bg-surface-container border border-outline-variant p-card-padding rounded-xl group hover:border-error/50 transition-colors">
+        <div class="flex justify-between items-start mb-4">
+            <div class="p-2 bg-error/10 rounded-lg text-error">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">cancel</span>
+            </div>
+            <span class="text-error font-bold text-headline-md">{{ ringkasan.alpha }}</span>
+        </div>
+        <h4 class="font-label-caps text-label-caps text-on-surface-variant">Alpha</h4>
+    </div>
 </section>
-<!-- Detailed Table Section -->
+
+<!-- Tabel Rekap Detail -->
 <section class="bg-surface-container rounded-xl border border-outline-variant overflow-hidden shadow-2xl">
-<div class="px-6 py-4 border-b border-outline-variant bg-surface-container-high/30 flex justify-between items-center">
-<h3 class="font-title-sm text-title-sm">Attendance Records</h3>
-<div class="flex items-center gap-2">
-<span class="text-body-sm text-on-surface-variant">Showing 1-10 of 1,353</span>
-<div class="flex gap-1 ml-4">
-<button class="p-1 rounded bg-surface-variant hover:bg-outline-variant text-on-surface"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
-<button class="p-1 rounded bg-surface-variant hover:bg-outline-variant text-on-surface"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
-</div>
-</div>
-</div>
-<div class="overflow-x-auto">
-<table class="w-full text-left border-collapse">
-<thead>
-<tr class="bg-surface-container-high/50">
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Student Name</th>
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">NIM</th>
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Time of Attendance</th>
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Status</th>
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Snapshot</th>
-<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant text-right">Action</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-outline-variant">
-<tr class="hover:bg-surface-variant/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-container font-bold text-xs">AS</div>
-<span class="font-body-md text-on-surface">Aditya Saputra</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm text-on-surface-variant">210401056</td>
-<td class="px-6 py-4 text-body-sm text-on-surface">07:55 AM <span class="text-[10px] text-outline ml-1">Today</span></td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Hadir</span>
-</td>
-<td class="px-6 py-4">
-<button class="flex items-center gap-1 text-primary hover:underline text-body-sm">
-<span class="material-symbols-outlined text-[16px]">visibility</span>
-<span>Preview</span>
-</button>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-<tr class="hover:bg-surface-variant/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-tertiary-container/20 flex items-center justify-center text-tertiary font-bold text-xs">RM</div>
-<span class="font-body-md text-on-surface">Rina Maharani</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm text-on-surface-variant">210401089</td>
-<td class="px-6 py-4 text-body-sm text-on-surface">08:15 AM <span class="text-[10px] text-outline ml-1">Today</span></td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-tertiary/10 text-tertiary border border-tertiary/20">Terlambat</span>
-</td>
-<td class="px-6 py-4">
-<button class="flex items-center gap-1 text-primary hover:underline text-body-sm">
-<span class="material-symbols-outlined text-[16px]">visibility</span>
-<span>Preview</span>
-</button>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-<tr class="hover:bg-surface-variant/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary font-bold text-xs">BF</div>
-<span class="font-body-md text-on-surface">Budi Firman</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm text-on-surface-variant">210401102</td>
-<td class="px-6 py-4 text-body-sm text-on-surface">-</td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">Izin</span>
-</td>
-<td class="px-6 py-4">
-<span class="text-outline italic text-[11px]">No Snapshot</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-<tr class="hover:bg-surface-variant/20 transition-colors">
-<td class="px-6 py-4">
-<div class="flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-error-container/20 flex items-center justify-center text-error font-bold text-xs">SP</div>
-<span class="font-body-md text-on-surface">Siska Putri</span>
-</div>
-</td>
-<td class="px-6 py-4 text-body-sm text-on-surface-variant">210401211</td>
-<td class="px-6 py-4 text-body-sm text-on-surface">-</td>
-<td class="px-6 py-4">
-<span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-error/10 text-error border border-error/20">Alpha</span>
-</td>
-<td class="px-6 py-4">
-<span class="text-outline italic text-[11px]">No Snapshot</span>
-</td>
-<td class="px-6 py-4 text-right">
-<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">more_vert</span></button>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="px-6 py-4 bg-surface-container-high/20 border-t border-outline-variant flex items-center justify-between">
-<span class="text-body-sm text-on-surface-variant">Rows per page: 10</span>
-<div class="flex items-center gap-6">
-<span class="text-body-sm text-on-surface-variant">1 of 136 pages</span>
-<div class="flex gap-2">
-<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
-<span class="material-symbols-outlined text-[20px]">first_page</span>
-</button>
-<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
-<span class="material-symbols-outlined text-[20px]">chevron_left</span>
-</button>
-<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
-<span class="material-symbols-outlined text-[20px]">chevron_right</span>
-</button>
-<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors">
-<span class="material-symbols-outlined text-[20px]">last_page</span>
-</button>
-</div>
-</div>
-</div>
+    <div class="px-6 py-4 border-b border-outline-variant bg-surface-container-high/30 flex justify-between items-center">
+        <h3 class="font-title-sm text-title-sm">Attendance Records</h3>
+        <span class="text-body-sm text-on-surface-variant">
+            Menampilkan <span class="text-on-surface font-semibold">{{ rekap|length }}</span> record
+        </span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-high/50">
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Mahasiswa</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">NIM</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Mata Kuliah</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Waktu</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Status</th>
+                    <th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">Snapshot</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant">
+                {% for a in rekap %}
+                <tr class="hover:bg-surface-variant/20 transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary font-bold text-xs">
+                                {{ a.nama[:2]|upper }}
+                            </div>
+                            <div>
+                                <span class="font-body-md text-on-surface">{{ a.nama }}</span>
+                                <p class="text-[11px] text-on-surface-variant">{{ a.nama_kelas }}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface-variant font-mono">{{ a.nim }}</td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface-variant">{{ a.nama_mk }}<br/><span class="text-[10px] text-outline">{{ a.hari }} · {{ a.tanggal }}</span></td>
+                    <td class="px-6 py-4 text-body-sm text-on-surface">{{ a.waktu_absen or '-' }}</td>
+                    <td class="px-6 py-4">
+                        {% if a.status == 'hadir' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-primary/10 text-primary border border-primary/20">Hadir</span>
+                        {% elif a.status == 'terlambat' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-tertiary/10 text-tertiary border border-tertiary/20">Terlambat</span>
+                        {% elif a.status == 'izin' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-secondary/10 text-secondary border border-secondary/20">Izin</span>
+                        {% elif a.status == 'alpha' %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-error/10 text-error border border-error/20">Alpha</span>
+                        {% else %}
+                        <span class="px-3 py-1 rounded-full text-[11px] font-bold uppercase bg-outline/10 text-outline border border-outline/20">{{ a.status|capitalize }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4">
+                        {% if a.snapshot_path %}
+                        {% set snap_filename = a.snapshot_path.replace('\\', '/').split('/')[-1] %}
+                        <button onclick="openSnapshotModal('{{ url_for('serve_snapshot', filename=snap_filename) }}', '{{ a.nama }}', '{{ a.waktu_absen }}', '{{ a.status }}')"
+                                class="flex items-center gap-1 text-primary hover:underline text-body-sm cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">visibility</span>
+                            <span>Preview</span>
+                        </button>
+                        {% else %}
+                        <span class="text-outline italic text-[11px]">No Snapshot</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="px-6 py-16 text-center">
+                        <span class="material-symbols-outlined text-4xl text-on-surface-variant/20 mb-2">event_busy</span>
+                        <p class="text-body-sm text-on-surface-variant">Tidak ada data absensi sesuai filter.</p>
+                        <p class="text-[11px] text-outline mt-1">Coba ubah filter atau rentang tanggal.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if rekap|length > 0 %}
+    <div class="px-6 py-4 bg-surface-container-high/20 border-t border-outline-variant flex items-center justify-between">
+        <span class="text-body-sm text-on-surface-variant">Total: {{ rekap|length }} record</span>
+    </div>
+    {% endif %}
 </section>
-</main>
-<!-- Floating Action Button (Contextual) -->
-<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
-<span class="material-symbols-outlined">add</span>
-</button>
-</body></html>
+
+<!-- Modal Preview Snapshot -->
+<div id="snapshot-modal" class="fixed inset-0 z-[9999] flex items-center justify-center hidden" style="background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);">
+    <div class="relative bg-surface-container-low border border-outline-variant rounded-2xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden"
+         style="animation: modalFadeIn 0.2s ease-out;">
+        <!-- Header Modal -->
+        <div class="flex items-center justify-between px-5 py-4 border-b border-outline-variant bg-surface-container-high/30">
+            <div>
+                <h4 id="modal-nama" class="font-title-sm text-on-surface"></h4>
+                <p class="text-[11px] text-on-surface-variant mt-0.5">
+                    <span id="modal-waktu"></span> · <span id="modal-status-text"></span>
+                </p>
+            </div>
+            <button onclick="closeSnapshotModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-surface-variant transition-colors text-on-surface-variant">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <!-- Gambar Snapshot -->
+        <div class="p-4 flex items-center justify-center bg-surface-container-lowest" style="min-height: 300px;">
+            <img id="modal-snapshot-img" src="" alt="Snapshot Absensi"
+                 class="max-w-full max-h-[60vh] rounded-lg object-contain shadow-lg" />
+        </div>
+        <!-- Footer Modal -->
+        <div class="px-5 py-3 border-t border-outline-variant bg-surface-container-high/20 flex justify-end">
+            <button onclick="closeSnapshotModal()"
+                    class="px-4 py-2 rounded-lg bg-surface-variant text-on-surface-variant text-body-sm font-semibold hover:brightness-110 transition-all">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.95) translateY(10px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+</style>
+
+<script>
+    // Buka modal preview snapshot
+    function openSnapshotModal(imgSrc, nama, waktu, status) {
+        document.getElementById('modal-snapshot-img').src = imgSrc;
+        document.getElementById('modal-nama').textContent = nama;
+        document.getElementById('modal-waktu').textContent = waktu || '-';
+        document.getElementById('modal-status-text').textContent = status ? status.charAt(0).toUpperCase() + status.slice(1) : '-';
+        document.getElementById('snapshot-modal').classList.remove('hidden');
+    }
+
+    // Tutup modal preview snapshot
+    function closeSnapshotModal() {
+        document.getElementById('snapshot-modal').classList.add('hidden');
+        document.getElementById('modal-snapshot-img').src = '';
+    }
+
+    // Tutup modal saat klik di luar area konten
+    document.getElementById('snapshot-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeSnapshotModal();
+    });
+
+    // Tutup modal dengan tombol Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeSnapshotModal();
+    });
+</script>
+{% endblock %}

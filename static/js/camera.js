@@ -55,6 +55,7 @@ const CameraManager = {
 
             // Terima hasil recognition dari server
             this.socket.on('recognition_result', (data) => {
+                console.log('[SOCKET] recognition_result:', data);
                 this._handleRecognitionResult(data);
             });
 
@@ -229,25 +230,66 @@ const CameraManager = {
      */
     _handleRecognitionResult: function (data) {
         this.lastResult = data;
+        var indicatorSpan = document.querySelector('#processing-indicator span:last-child');
+
+        // Skip — berbagai tipe
+        if (data.status === 'skip') {
+            if (data.tipe === 'verifying') {
+                if (indicatorSpan) indicatorSpan.textContent = '🔍 ' + (data.pesan || 'Memverifikasi...');
+            } else if (data.tipe === 'no_face') {
+                if (indicatorSpan) indicatorSpan.textContent = 'Mencari wajah...';
+            } else {
+                if (indicatorSpan) indicatorSpan.textContent = 'Mencari wajah...';
+            }
+            return;
+        }
 
         if (data.status === 'error') {
             // Spoofing terdeteksi
             if (data.tipe === 'spoofing') {
+                if (indicatorSpan) indicatorSpan.textContent = '⚠️ Spoofing!';
                 DashboardUI.showSpoofingWarning(data);
+            } else if (data.tipe === 'duplikat') {
+                if (indicatorSpan) indicatorSpan.textContent = '✓ Sudah absen';
+                this._throttledToast('info', 'Sudah Absen', data.pesan || 'Mahasiswa sudah absen hari ini.');
+            } else if (data.tipe === 'unknown') {
+                if (indicatorSpan) indicatorSpan.textContent = '? Wajah tidak dikenali';
+                this._throttledToast('warning', 'Tidak Dikenali', data.pesan || 'Wajah tidak cocok dengan database.');
+            } else if (data.tipe === 'no_jadwal') {
+                if (indicatorSpan) indicatorSpan.textContent = '⏰ Tidak ada jadwal';
+                this._throttledToast('warning', 'Tidak Ada Jadwal', data.pesan || 'Tidak ada jadwal aktif saat ini.');
+            } else {
+                if (indicatorSpan) indicatorSpan.textContent = 'Memproses...';
+                console.warn('[CAMERA] Recognition error:', data.pesan);
             }
             return;
         }
 
         if (data.status === 'ok') {
+            if (indicatorSpan) indicatorSpan.textContent = '✓ ' + data.data.nama;
             // Wajah berhasil dikenali dan absensi dicatat
             DashboardUI.showRecognitionSuccess(data.data);
             DashboardUI.showToast('success', 'Absensi Tercatat',
                 `${data.data.nama} — ${data.data.status_absensi}`);
+            // Refresh tabel absensi
+            DashboardUI.refreshAbsensiTable();
         }
 
         // Update spoofing indicator
         if (data.spoofing) {
             DashboardUI.updateSpoofingIndicator(data.spoofing);
         }
+    },
+
+    /**
+     * Toast dengan throttle — agar tidak spam notifikasi berulang
+     */
+    _throttledToast: function (type, title, message) {
+        var now = Date.now();
+        var key = type + ':' + title;
+        if (!this._toastTimers) this._toastTimers = {};
+        if (this._toastTimers[key] && now - this._toastTimers[key] < 5000) return;
+        this._toastTimers[key] = now;
+        DashboardUI.showToast(type, title, message);
     }
 };

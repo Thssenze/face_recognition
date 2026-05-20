@@ -4,7 +4,7 @@
 
 import cv2
 import numpy as np
-from config import ANTI_SPOOFING_THRESHOLD
+from config import ANTI_SPOOFING_THRESHOLD, ANTI_SPOOFING_ENABLED
 
 
 def _compute_lbp(image, radius=1, neighbors=8):
@@ -138,6 +138,15 @@ def check(frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     else:
         gray = frame.copy()
+
+    # Jika anti-spoofing dinonaktifkan via config, langsung REAL
+    if not ANTI_SPOOFING_ENABLED:
+        return {
+            'is_real': True,
+            'score': 1.0,
+            'threshold': ANTI_SPOOFING_THRESHOLD,
+            'label': 'REAL (bypass)'
+        }
 
     # Deteksi wajah terlebih dahulu
     cascade = cv2.CascadeClassifier(

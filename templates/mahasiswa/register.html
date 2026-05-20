@@ -49,7 +49,7 @@
                 <span class="material-symbols-outlined">badge</span>
                 <h3 class="font-title-sm text-title-sm font-bold uppercase tracking-wider">Form Data Diri</h3>
             </div>
-            <form id="formMahasiswa" class="space-y-6">
+            <form id="formMahasiswa" method="POST" action="{{ url_for('mahasiswa_register') }}" class="space-y-6">
                 <div class="space-y-2">
                     <label class="font-label-caps text-label-caps text-on-surface-variant block uppercase" for="nama">Nama Lengkap</label>
                     <input class="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 px-4 text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
@@ -70,11 +70,18 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="pt-4">
+                <div class="pt-4 flex flex-col gap-3">
+                    <!-- Tombol ambil foto (intercepted via JS, tidak submit form) -->
                     <button id="btnMulaiFoto" type="button"
-                            class="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all">
+                            class="w-full bg-primary-container text-on-primary-container font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.98] transition-all">
                         <span class="material-symbols-outlined">camera</span>
                         Mulai Ambil Foto
+                    </button>
+                    <!-- Tombol simpan data saja (submit form ke server) -->
+                    <button type="submit"
+                            class="w-full bg-surface-container border border-outline-variant text-on-surface font-semibold py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-surface-variant active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[20px]">save</span>
+                        Simpan Data Saja
                     </button>
                 </div>
             </form>
@@ -120,8 +127,8 @@
                     <!-- Face overlay guide -->
                     <div class="absolute inset-0 flex items-center justify-center hidden" id="faceGuide">
                         <div class="face-oval-overlay flex items-center justify-center" id="faceOval">
-                            <div class="absolute top-4 bg-primary/20 backdrop-blur-md text-primary text-[10px] px-3 py-1 rounded-full border border-primary/30 uppercase font-bold">
-                                Sejajarkan Wajah
+                            <div class="absolute top-4 backdrop-blur-md text-[11px] px-4 py-1.5 rounded-full border font-bold transition-all duration-300" id="expressionLabel" style="color:#38bdf8; background:rgba(56,189,248,0.15); border-color:rgba(56,189,248,0.3);">
+                                😐 Sejajarkan Wajah
                             </div>
                         </div>
                     </div>
@@ -189,6 +196,47 @@ let captureInterval = null;
 let jumlahFoto = 0;
 let stream = null;
 
+// ═══════════════════════════════════════════════════
+// TAHAP EKSPRESI — Bagi 50 foto jadi 5 tahap
+// ═══════════════════════════════════════════════════
+const EKSPRESI_STAGES = [
+    { nama: '😐 Wajah Normal',     icon: 'sentiment_neutral',    color: '#38bdf8', mulai: 0,  akhir: 9  },
+    { nama: '😊 Tersenyum',        icon: 'sentiment_satisfied',  color: '#34d399', mulai: 10, akhir: 19 },
+    { nama: '👈 Lihat Kiri',       icon: 'arrow_back',           color: '#f59e0b', mulai: 20, akhir: 29 },
+    { nama: '👉 Lihat Kanan',      icon: 'arrow_forward',        color: '#a78bfa', mulai: 30, akhir: 39 },
+    { nama: '🙂 Sedikit Menunduk', icon: 'vertical_align_bottom',color: '#f472b6', mulai: 40, akhir: 49 }
+];
+
+// Ambil stage berdasarkan jumlah foto saat ini
+function getCurrentStage() {
+    for (let s of EKSPRESI_STAGES) {
+        if (jumlahFoto >= s.mulai && jumlahFoto <= s.akhir) return s;
+    }
+    return EKSPRESI_STAGES[EKSPRESI_STAGES.length - 1];
+}
+
+// Update tampilan panduan ekspresi
+function updateEkspresiGuide() {
+    const stage = getCurrentStage();
+    const label = document.getElementById('expressionLabel');
+    if (label) {
+        label.textContent = stage.nama;
+        label.style.borderColor = stage.color + '50';
+        label.style.color = stage.color;
+        label.style.background = stage.color + '20';
+    }
+    // Ubah warna oval sesuai tahap
+    if (faceOval) {
+        faceOval.style.borderColor = stage.color;
+    }
+    // Update status label
+    statusLabel.textContent = stage.nama + ' (' + (jumlahFoto - stage.mulai + 1) + '/10)';
+}
+
+// ═══════════════════════════════════════════════════
+// LOGIKA UTAMA
+// ═══════════════════════════════════════════════════
+
 // Validasi form sebelum mulai
 function validasiForm() {
     const nama = document.getElementById('nama').value.trim();
@@ -249,7 +297,23 @@ function captureFrame() {
             jumlahFoto++;
             fotoCount.textContent = jumlahFoto;
             progressBar.style.width = (jumlahFoto / MAX_FOTO * 100) + '%';
-            statusLabel.textContent = 'Mengambil foto...';
+            updateEkspresiGuide();
+
+            // Jeda antar tahap — beri waktu user ganti ekspresi
+            const stage = getCurrentStage();
+            if (jumlahFoto === stage.mulai && jumlahFoto > 0) {
+                clearInterval(captureInterval);
+                captureInterval = null;
+                faceOval.classList.remove('capturing');
+                statusLabel.textContent = '⏸ Ganti ekspresi: ' + stage.nama;
+
+                // Lanjut otomatis setelah 2 detik
+                setTimeout(() => {
+                    faceOval.classList.add('capturing');
+                    captureInterval = setInterval(captureFrame, 250);
+                }, 2000);
+            }
+
             if (jumlahFoto >= MAX_FOTO) selesaiCapture();
         } else {
             statusLabel.textContent = data.pesan || 'Error';
@@ -308,7 +372,8 @@ btnMulai.addEventListener('click', async () => {
 
     setTimeout(() => {
         faceOval.classList.add('capturing');
-        captureInterval = setInterval(captureFrame, 200); // 200ms per frame
+        updateEkspresiGuide();
+        captureInterval = setInterval(captureFrame, 250);
     }, 1000);
 });
 </script>

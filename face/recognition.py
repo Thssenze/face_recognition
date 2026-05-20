@@ -52,9 +52,9 @@ def detect_faces(frame):
 
     faces = _face_cascade.detectMultiScale(
         gray,
-        scaleFactor=1.3,
-        minNeighbors=5,
-        minSize=(80, 80)
+        scaleFactor=1.1,
+        minNeighbors=4,
+        minSize=(30, 30)
     )
     return faces
 
@@ -97,11 +97,15 @@ def predict(frame):
         # Predict dengan LBPH
         user_id, confidence = _recognizer.predict(face_roi)
 
+        dikenali = confidence < CONFIDENCE_THRESHOLD
+        print(f'[RECOGNITION] user_id={user_id}, confidence={confidence:.1f}, '
+              f'threshold={CONFIDENCE_THRESHOLD}, dikenali={dikenali}')
+
         hasil.append({
             'user_id': user_id,
             'confidence': round(confidence, 2),
             'bbox': (int(x), int(y), int(w), int(h)),
-            'dikenali': confidence < CONFIDENCE_THRESHOLD
+            'dikenali': dikenali
         })
 
     return hasil

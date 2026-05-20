@@ -644,6 +644,122 @@ def get_persentase_kehadiran(kelas_id=None, tanggal_dari=None, tanggal_sampai=No
 # SPOOFING LOG
 # ══════════════════════════════════════════════════════════════
 
+def get_ringkasan_rekap(kelas_id=None, tanggal_dari=None, tanggal_sampai=None, matakuliah_id=None):
+    """Hitung jumlah record per status untuk kartu ringkasan rekap. Return dict."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        query = """
+            SELECT status, COUNT(*) as jumlah
+            FROM absensi a
+            JOIN users u ON a.user_id = u.id
+            JOIN jadwal j ON a.jadwal_id = j.id
+            WHERE 1=1
+        """
+        params = []
+        if kelas_id:
+            query += " AND u.kelas_id = %s"
+            params.append(kelas_id)
+        if tanggal_dari:
+            query += " AND a.tanggal >= %s"
+            params.append(tanggal_dari)
+        if tanggal_sampai:
+            query += " AND a.tanggal <= %s"
+            params.append(tanggal_sampai)
+        if matakuliah_id:
+            query += " AND j.matakuliah_id = %s"
+            params.append(matakuliah_id)
+        query += " GROUP BY status"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        cursor.close(); conn.close()
+        hasil = {'hadir': 0, 'terlambat': 0, 'izin': 0, 'alpha': 0}
+        for r in rows:
+            if r['status'] in hasil:
+                hasil[r['status']] = r['jumlah']
+        return hasil
+    except Exception:
+        return {'hadir': 0, 'terlambat': 0, 'izin': 0, 'alpha': 0}
+
+
+def get_ranking_kelas(tanggal_dari=None, tanggal_sampai=None):
+    """Hitung persentase kehadiran per kelas untuk laporan ranking. Return list dict."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        # Ambil semua kelas terlebih dahulu
+        cursor.execute("SELECT id, nama_kelas, angkatan FROM kelas ORDER BY nama_kelas")
+        kelas_list = cursor.fetchall()
+        ranking = []
+        for k in kelas_list:
+            q = """
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN a.status = 'hadir' THEN 1 ELSE 0 END) as hadir
+                FROM absensi a
+                JOIN users u ON a.user_id = u.id
+                WHERE u.kelas_id = %s
+            """
+            params = [k['id']]
+            if tanggal_dari:
+                q += " AND a.tanggal >= %s"
+                params.append(tanggal_dari)
+            if tanggal_sampai:
+                q += " AND a.tanggal <= %s"
+                params.append(tanggal_sampai)
+            cursor.execute(q, params)
+            stat = cursor.fetchone()
+            total = stat['total'] or 0
+            hadir = stat['hadir'] or 0
+            persen = round(hadir / total * 100, 1) if total > 0 else 0
+            ranking.append({
+                'id': k['id'],
+                'nama_kelas': k['nama_kelas'],
+                'angkatan': k['angkatan'],
+                'total': total,
+                'hadir': hadir,
+                'persen': persen
+            })
+        cursor.close(); conn.close()
+        # Urutkan dari persen tertinggi
+        ranking.sort(key=lambda x: x['persen'], reverse=True)
+        return ranking
+    except Exception:
+        return []
+
+
+def get_top_mahasiswa(tanggal_dari=None, tanggal_sampai=None):
+    """Cari mahasiswa dengan kehadiran tertinggi. Return dict atau None."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        q = """
+            SELECT u.nama, k.nama_kelas,
+                   COUNT(*) as total,
+                   SUM(CASE WHEN a.status = 'hadir' THEN 1 ELSE 0 END) as hadir
+            FROM absensi a
+            JOIN users u ON a.user_id = u.id
+            JOIN kelas k ON u.kelas_id = k.id
+            WHERE 1=1
+        """
+        params = []
+        if tanggal_dari:
+            q += " AND a.tanggal >= %s"
+            params.append(tanggal_dari)
+        if tanggal_sampai:
+            q += " AND a.tanggal <= %s"
+            params.append(tanggal_sampai)
+        q += " GROUP BY u.id, u.nama, k.nama_kelas HAVING total > 0 ORDER BY (hadir/total) DESC LIMIT 1"
+        cursor.execute(q, params)
+        row = cursor.fetchone()
+        cursor.close(); conn.close()
+        if row and row['total'] > 0:
+            row['persen'] = round(row['hadir'] / row['total'] * 100, 1)
+        return row
+    except Exception:
+        return None
+
+
 def catat_spoofing(snapshot_path, confidence_score):
     """Simpan log percobaan spoofing. Return id atau None."""
     try:

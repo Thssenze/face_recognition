@@ -29,6 +29,9 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # Status kamera global
 camera_state = {'active': False}
 
+# Tracker verifikasi konsekutif — wajah harus dikenali N kali berturut-turut
+_consecutive_tracker = {'user_id': None, 'count': 0}
+
 
 # ══════════════════════════════════════════════════════════════
 # DECORATOR: login_required
@@ -140,7 +143,9 @@ def dashboard():
     return render_template('dashboard.html',
                            active_page='dashboard',
                            statistik=statistik,
-                           absensi_hari_ini=absensi)
+                           absensi_hari_ini=absensi,
+                           conf_threshold=CONFIDENCE_THRESHOLD,
+                           spoof_threshold=ANTI_SPOOFING_THRESHOLD)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -327,7 +332,9 @@ def jadwal_tambah():
                 return redirect(url_for('jadwal_index'))
             error = 'Gagal menambahkan jadwal.'
     return render_template('jadwal/form.html', active_page='jadwal',
-                           daftar_mk=db.get_semua_matakuliah(), error=error)
+                           daftar_mk=db.get_semua_matakuliah(),
+                           daftar_kelas=db.get_semua_kelas(),
+                           error=error)
 
 
 @app.route('/jadwal/hapus/<int:id>', methods=['POST'])
@@ -375,8 +382,29 @@ def mahasiswa_index():
 @app.route('/mahasiswa/register', methods=['GET', 'POST'])
 @login_required
 def mahasiswa_register():
-    """Form registrasi mahasiswa baru (data + foto kamera)."""
+    """Form registrasi mahasiswa baru (data + foto kamera).
+
+    POST dari form biasa (tanpa foto) → simpan data ke DB, redirect ke daftar.
+    POST dari AJAX (api_foto_upload) → sudah ditangani route terpisah.
+    """
     error = None
+    if request.method == 'POST':
+        nama     = request.form.get('nama', '').strip()
+        nim      = request.form.get('nim', '').strip()
+        kelas_id = request.form.get('kelas_id', type=int)
+
+        if not nama or not nim or not kelas_id:
+            error = 'Semua field (Nama, NIM, Kelas) wajib diisi.'
+        elif db.nim_sudah_ada(nim):
+            error = f'NIM {nim} sudah terdaftar.'
+        else:
+            user_id = db.tambah_user(nama, nim, kelas_id)
+            if user_id:
+                flash(f'Mahasiswa {nama} berhasil didaftarkan! Lanjutkan pengambilan foto biometrik.', 'success')
+                return redirect(url_for('mahasiswa_index'))
+            else:
+                error = 'Gagal menyimpan. NIM mungkin sudah dipakai.'
+
     return render_template('mahasiswa/register.html', active_page='mahasiswa',
                            daftar_kelas=db.get_semua_kelas(), error=error)
 
@@ -424,25 +452,223 @@ def mahasiswa_hapus(id):
 
 
 # ══════════════════════════════════════════════════════════════
-# PLACEHOLDER — akan diimplementasi tahap selanjutnya
+# TAHAP 8: REKAP ABSENSI + EXPORT
 # ══════════════════════════════════════════════════════════════
 
 @app.route('/absensi/rekap')
 @login_required
 def absensi_rekap():
-    """Rekap absensi."""
-    return render_template('dashboard.html', active_page='rekap',
-                           statistik=db.get_statistik_dashboard(),
-                           absensi_hari_ini=[])
+    """Rekap absensi dengan filter kelas, MK, dan rentang tanggal."""
+    # Ambil parameter filter dari query string
+    kelas_id     = request.args.get('kelas_id', type=int)
+    matakuliah_id = request.args.get('matakuliah_id', type=int)
+    filter_dari  = request.args.get('dari') or None
+    filter_sampai = request.args.get('sampai') or None
 
+    # Data untuk dropdown filter
+    daftar_kelas = db.get_semua_kelas()
+    daftar_mk    = db.get_semua_matakuliah()
+
+    # Ambil rekap + ringkasan berdasarkan filter
+    rekap    = db.get_rekap_absensi(kelas_id, filter_dari, filter_sampai, matakuliah_id)
+    ringkasan = db.get_ringkasan_rekap(kelas_id, filter_dari, filter_sampai, matakuliah_id)
+
+    # Bangun query string untuk link export (teruskan filter yang sama)
+    _params = []
+    if kelas_id:      _params.append(f'kelas_id={kelas_id}')
+    if matakuliah_id: _params.append(f'matakuliah_id={matakuliah_id}')
+    if filter_dari:   _params.append(f'dari={filter_dari}')
+    if filter_sampai: _params.append(f'sampai={filter_sampai}')
+    filter_query = ('?' + '&'.join(_params)) if _params else ''
+
+    return render_template('absensi/rekap.html',
+                           active_page='rekap',
+                           rekap=rekap,
+                           ringkasan=ringkasan,
+                           daftar_kelas=daftar_kelas,
+                           daftar_mk=daftar_mk,
+                           filter_kelas=kelas_id,
+                           filter_mk=matakuliah_id,
+                           filter_dari=filter_dari,
+                           filter_sampai=filter_sampai,
+                           filter_query=filter_query)
+
+
+@app.route('/absensi/export')
+@login_required
+def absensi_export():
+    """Export rekap absensi ke CSV atau Excel (.xlsx).
+
+    Query params: format=csv|xlsx, kelas_id, matakuliah_id, dari, sampai
+    """
+    import io
+    fmt           = request.args.get('format', 'csv').lower()
+    kelas_id      = request.args.get('kelas_id', type=int)
+    matakuliah_id = request.args.get('matakuliah_id', type=int)
+    filter_dari   = request.args.get('dari') or None
+    filter_sampai = request.args.get('sampai') or None
+
+    rekap = db.get_rekap_absensi(kelas_id, filter_dari, filter_sampai, matakuliah_id)
+
+    # ── Header kolom ──
+    headers = ['Nama', 'NIM', 'Kelas', 'Mata Kuliah', 'Kode MK',
+               'Hari', 'Tanggal', 'Waktu Absen', 'Status']
+
+    def _row(a):
+        return [
+            a.get('nama', ''), a.get('nim', ''), a.get('nama_kelas', ''),
+            a.get('nama_mk', ''), a.get('kode_mk', ''), a.get('hari', ''),
+            str(a.get('tanggal', '')), str(a.get('waktu_absen', '') or '-'),
+            a.get('status', '')
+        ]
+
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    if fmt == 'xlsx':
+        # ── Export Excel ──
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment
+            from flask import send_file
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = 'Rekap Absensi'
+
+            # Header baris 1: judul
+            ws.merge_cells('A1:I1')
+            ws['A1'] = 'REKAP ABSENSI — SISTEM ABSENSI'
+            ws['A1'].font = Font(bold=True, size=14)
+            ws['A1'].alignment = Alignment(horizontal='center')
+
+            # Header baris 2: kolom
+            header_fill = PatternFill('solid', fgColor='1B2024')
+            for col, h in enumerate(headers, 1):
+                cell = ws.cell(row=2, column=col, value=h)
+                cell.font = Font(bold=True, color='8ED5FF')
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal='center')
+
+            # Data
+            STATUS_COLOR = {
+                'hadir': 'D1FAE5', 'terlambat': 'FEF3C7',
+                'izin': 'DBEAFE', 'alpha': 'FEE2E2'
+            }
+            for row_idx, a in enumerate(rekap, 3):
+                row_data = _row(a)
+                for col_idx, val in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                    status = a.get('status', '')
+                    if col_idx == len(headers) and status in STATUS_COLOR:
+                        cell.fill = PatternFill('solid', fgColor=STATUS_COLOR[status])
+
+            # Lebar kolom otomatis
+            col_widths = [25, 15, 12, 25, 12, 10, 12, 14, 12]
+            for i, w in enumerate(col_widths, 1):
+                ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            return send_file(buf, as_attachment=True,
+                             download_name=f'rekap_absensi_{timestamp}.xlsx',
+                             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        except ImportError:
+            flash('openpyxl belum terinstall. Gunakan export CSV.', 'error')
+            return redirect(url_for('absensi_rekap'))
+
+    else:
+        # ── Export CSV ──
+        import csv
+        from flask import Response
+
+        def generate_csv():
+            buf = io.StringIO()
+            writer = csv.writer(buf)
+            writer.writerow(headers)
+            for a in rekap:
+                writer.writerow(_row(a))
+            return buf.getvalue()
+
+        return Response(
+            generate_csv(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=rekap_absensi_{timestamp}.csv'}
+        )
+
+
+# ══════════════════════════════════════════════════════════════
+# TAHAP 9: LAPORAN KEHADIRAN
+# ══════════════════════════════════════════════════════════════
 
 @app.route('/laporan')
 @login_required
 def laporan_index():
-    """Laporan kehadiran."""
-    return render_template('dashboard.html', active_page='laporan',
-                           statistik=db.get_statistik_dashboard(),
-                           absensi_hari_ini=[])
+    """Laporan kehadiran: persentase, donut chart, ranking kelas."""
+    from datetime import date, timedelta
+
+    periode = request.args.get('periode', 'bulan')
+
+    # Tentukan rentang tanggal berdasarkan periode
+    today = date.today()
+    if periode == 'bulan':
+        tanggal_dari  = today.replace(day=1).isoformat()
+        tanggal_sampai = today.isoformat()
+    elif periode == 'semester':
+        # Semester berjalan: Januari–Juni atau Juli–Desember
+        bulan = today.month
+        if bulan <= 6:
+            tanggal_dari = today.replace(month=1, day=1).isoformat()
+        else:
+            tanggal_dari = today.replace(month=7, day=1).isoformat()
+        tanggal_sampai = today.isoformat()
+    else:  # tahun
+        tanggal_dari  = today.replace(month=1, day=1).isoformat()
+        tanggal_sampai = today.isoformat()
+
+    # Data laporan
+    persen        = db.get_persentase_kehadiran(tanggal_dari=tanggal_dari, tanggal_sampai=tanggal_sampai)
+    ranking_kelas = db.get_ranking_kelas(tanggal_dari, tanggal_sampai)
+    top_mahasiswa = db.get_top_mahasiswa(tanggal_dari, tanggal_sampai)
+    statistik     = db.get_statistik_dashboard()
+
+    return render_template('laporan/index.html',
+                           active_page='laporan',
+                           periode=periode,
+                           persen=persen,
+                           ranking_kelas=ranking_kelas,
+                           top_mahasiswa=top_mahasiswa,
+                           total_kelas=statistik.get('total_kelas', 0),
+                           total_mahasiswa=statistik.get('total_mahasiswa', 0))
+
+
+# ══════════════════════════════════════════════════════════════
+# TAHAP 10: ABSENSI MANUAL ADMIN
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/absensi/manual', methods=['GET', 'POST'])
+@login_required
+def absensi_manual():
+    """Input / override absensi oleh admin."""
+    if request.method == 'POST':
+        absensi_id = request.form.get('absensi_id', type=int)
+        status_baru = request.form.get('status')
+
+        if not absensi_id or status_baru not in ('hadir', 'terlambat', 'izin', 'alpha'):
+            flash('Data tidak valid.', 'error')
+            return redirect(url_for('absensi_manual'))
+
+        if db.update_status_absensi(absensi_id, status_baru):
+            flash(f'Status absensi berhasil diubah ke "{status_baru}".', 'success')
+        else:
+            flash('Gagal mengubah status absensi.', 'error')
+        return redirect(url_for('absensi_manual'))
+
+    # GET — tampilkan daftar absensi hari ini untuk dioverride
+    rekap = db.get_absensi_hari_ini()
+    return render_template('absensi/manual.html',
+                           active_page='rekap',
+                           rekap=rekap)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -453,15 +679,27 @@ def laporan_index():
 @login_required
 def api_absensi_hari_ini():
     """Data absensi hari ini dalam format JSON."""
-    data = db.get_absensi_hari_ini()
-    return jsonify({'status': 'ok', 'data': data, 'pesan': None})
+    try:
+        data = db.get_absensi_hari_ini()
+        # Konversi timedelta/time ke string agar JSON-serializable
+        for row in data:
+            for key, val in row.items():
+                if isinstance(val, timedelta):
+                    total_seconds = int(val.total_seconds())
+                    hours, remainder = divmod(total_seconds, 3600)
+                    minutes, seconds = divmod(remainder, 60)
+                    row[key] = f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+                elif isinstance(val, (date,)):
+                    row[key] = val.isoformat()
+        return jsonify({'status': 'ok', 'data': data, 'pesan': None})
+    except Exception as e:
+        return jsonify({'status': 'error', 'data': [], 'pesan': str(e)})
 
 
 @app.route('/api/foto/upload', methods=['POST'])
 @login_required
 def api_foto_upload():
     """Terima foto wajah via AJAX (base64) dan simpan ke dataset/."""
-    import base64
     data = request.get_json()
     if not data:
         return jsonify({'status': 'error', 'pesan': 'Data tidak valid.'}), 400
@@ -485,16 +723,34 @@ def api_foto_upload():
         else:
             user_id = user['id']
 
-        # Decode base64 → simpan ke dataset/{user_id}/
+        # Decode base64 → numpy array
         header, encoded = foto_b64.split(',', 1)
         foto_bytes = base64.b64decode(encoded)
+        np_arr = np.frombuffer(foto_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if frame is not None:
+            h, w = frame.shape[:2]
+            # Crop area tengah (sesuai panduan oval: ~37.5% width, ~62.5% height)
+            crop_w, crop_h = int(w * 0.45), int(h * 0.70)
+            x1 = (w - crop_w) // 2
+            y1 = (h - crop_h) // 2
+            cropped = frame[y1:y1+crop_h, x1:x1+crop_w]
+            # Simpan hasil crop
+            save_frame = cropped
+        else:
+            # Fallback: simpan raw bytes
+            save_frame = None
 
         folder = os.path.join(DATASET_PATH, str(user_id))
         os.makedirs(folder, exist_ok=True)
-
         filepath = os.path.join(folder, f'{index}.jpg')
-        with open(filepath, 'wb') as f:
-            f.write(foto_bytes)
+
+        if save_frame is not None:
+            cv2.imwrite(filepath, save_frame)
+        else:
+            with open(filepath, 'wb') as f:
+                f.write(foto_bytes)
 
         return jsonify({'status': 'ok', 'pesan': f'Foto {index} tersimpan.', 'data': {'user_id': user_id}})
 
@@ -506,7 +762,6 @@ def api_foto_upload():
 @login_required
 def api_training_start():
     """Mulai training LBPH di background thread."""
-    import threading
 
     def run_training():
         """Jalankan training di background."""
@@ -635,7 +890,14 @@ def _proses_recognition(frame):
             'spoofing': spoof_result
         }
 
+    # Log confidence untuk debug
+    print(f'[ABSENSI] Predict: user_id={result["user_id"]}, '
+          f'conf={result["confidence"]:.1f}, dikenali={result["dikenali"]}')
+
     if not result['dikenali']:
+        # Reset counter konsekutif saat wajah tidak dikenali
+        _consecutive_tracker['user_id'] = None
+        _consecutive_tracker['count'] = 0
         return {
             'status': 'error',
             'tipe': 'unknown',
@@ -643,6 +905,27 @@ def _proses_recognition(frame):
             'pesan': f'Wajah tidak dikenali (confidence: {result["confidence"]}).',
             'spoofing': spoof_result
         }
+
+    # ── Verifikasi konsekutif: harus 3x berturut-turut user yang SAMA ──
+    detected_uid = result['user_id']
+    if _consecutive_tracker['user_id'] == detected_uid:
+        _consecutive_tracker['count'] += 1
+    else:
+        _consecutive_tracker['user_id'] = detected_uid
+        _consecutive_tracker['count'] = 1
+
+    required = 3  # Minimal 3 frame konsekutif
+    if _consecutive_tracker['count'] < required:
+        return {
+            'status': 'skip',
+            'tipe': 'verifying',
+            'pesan': f'Memverifikasi wajah... ({_consecutive_tracker["count"]}/{required})',
+            'spoofing': spoof_result
+        }
+
+    # Reset counter setelah berhasil verifikasi
+    _consecutive_tracker['user_id'] = None
+    _consecutive_tracker['count'] = 0
 
     user_id = result['user_id']
     confidence = result['confidence']
@@ -808,6 +1091,18 @@ def api_camera_toggle():
 
 
 # ══════════════════════════════════════════════════════════════
+# SERVE SNAPSHOT — Menyajikan foto bukti absensi
+# ══════════════════════════════════════════════════════════════
+
+@app.route('/snapshots/<path:filename>')
+@login_required
+def serve_snapshot(filename):
+    """Sajikan file gambar snapshot bukti absensi."""
+    from flask import send_from_directory
+    return send_from_directory(SNAPSHOT_PATH, filename)
+
+
+# ══════════════════════════════════════════════════════════════
 # WEBSOCKET HANDLERS (Flask-SocketIO)
 # ══════════════════════════════════════════════════════════════
 
@@ -833,29 +1128,39 @@ def handle_camera_toggle(data):
 @socketio.on('process_frame')
 def handle_process_frame(data):
     """Terima frame dari client via WebSocket, proses recognition."""
-    if 'frame' not in data:
-        emit('recognition_result', {'status': 'error', 'pesan': 'Frame kosong.'})
-        return
+    try:
+        if 'frame' not in data:
+            emit('recognition_result', {'status': 'error', 'pesan': 'Frame kosong.'})
+            return
 
-    frame = _decode_frame(data['frame'])
-    if frame is None:
-        emit('recognition_result', {'status': 'error', 'pesan': 'Gagal decode.'})
-        return
+        frame = _decode_frame(data['frame'])
+        if frame is None:
+            emit('recognition_result', {'status': 'error', 'pesan': 'Gagal decode.'})
+            return
 
-    hasil = _proses_recognition(frame)
-    emit('recognition_result', hasil)
+        print(f'[SOCKET] process_frame: frame shape={frame.shape}')
+        hasil = _proses_recognition(frame)
+        print(f'[SOCKET] process_frame result: status={hasil.get("status")}, tipe={hasil.get("tipe", "-")}')
+        emit('recognition_result', hasil)
 
-    # Jika absensi berhasil, broadcast ke semua client
-    if hasil.get('status') == 'ok' and hasil.get('data'):
-        socketio.emit('absensi_update', {
-            **hasil['data'],
-            'stats': hasil.get('stats')
-        })
+        # Jika absensi berhasil, broadcast ke semua client
+        if hasil.get('status') == 'ok' and hasil.get('data'):
+            socketio.emit('absensi_update', {
+                **hasil['data'],
+                'stats': hasil.get('stats')
+            })
+    except Exception as e:
+        print(f'[SOCKET ERROR] process_frame exception: {e}')
+        import traceback
+        traceback.print_exc()
+        emit('recognition_result', {'status': 'error', 'pesan': f'Server error: {str(e)}'})
+
 
 
 # ══════════════════════════════════════════════════════════════
 # ENTRY POINT
 # ══════════════════════════════════════════════════════════════
+
 
 if __name__ == '__main__':
     # Pastikan folder yang dibutuhkan ada
@@ -873,4 +1178,5 @@ if __name__ == '__main__':
     print(f"[INFO] Confidence : threshold={CONFIDENCE_THRESHOLD}")
     print(f"[INFO] ESP32      : {'Aktif' if ESP32_ENABLED else 'Nonaktif'}")
     print(f"[INFO] Tekan Ctrl+C untuk menghentikan.\n")
-    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True)
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True,
+                 allow_unsafe_werkzeug=True)
