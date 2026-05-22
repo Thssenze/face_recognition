@@ -4,7 +4,8 @@ env/
 .env/
 
 # ── Konfigurasi Sensitif (berisi password) ───────────────────
-config.py
+# config.py telah diatur agar menggunakan Environment Variables sehingga aman di-upload
+# (Dihapus dari gitignore agar Railway bisa membacanya)
 
 # ── Data Wajah (privasi) — folder tetap ada, isi diabaikan ──
 dataset/*
