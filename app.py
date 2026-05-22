@@ -941,20 +941,28 @@ def _simpan_snapshot(frame, user_id):
     except Exception as e:
         print(f'[ERROR] Gagal simpan snapshot: {e}')
         return None
-
+# Antrean notifikasi untuk ESP32 (Metode Polling)
+esp32_queue = []
 
 def _kirim_ke_esp32(nama, nim, status_pesan):
-    """Kirim notifikasi ke ESP32 via HTTP POST (jika diaktifkan)."""
+    """Simpan notifikasi ke antrean untuk diambil oleh ESP32 (Polling)."""
     if not ESP32_ENABLED:
         return
-    try:
-        import requests
-        url = f"http://{ESP32_IP}:{ESP32_PORT}/absensi"
-        payload = {'nama': nama, 'nim': nim, 'status': status_pesan}
-        requests.post(url, json=payload, timeout=ESP32_TIMEOUT)
-        print(f'[ESP32] Notifikasi terkirim: {nama} - {status_pesan}')
-    except Exception as e:
-        print(f'[ESP32] Gagal kirim: {e}')
+    # Batasi ukuran antrean agar tidak memakan memori berlebih
+    if len(esp32_queue) > 10:
+        esp32_queue.pop(0)
+    
+    esp32_queue.append({'nama': nama, 'nim': nim, 'status': status_pesan})
+    print(f'[ESP32 Queue] Masuk antrean: {nama} - {status_pesan}')
+
+@app.route('/api/esp32/poll', methods=['GET'])
+def api_esp32_poll():
+    """Endpoint untuk ESP32 menarik data absensi terbaru."""
+    if esp32_queue:
+        # Ambil data paling lama (FIFO)
+        data = esp32_queue.pop(0)
+        return jsonify({"status": "ok", "data": data})
+    return jsonify({"status": "empty", "data": None})
 
 
 def _get_nama_hari():

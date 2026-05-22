@@ -1,57 +1,56 @@
 /*
  * ============================================================
- *  SISTEM ABSENSI FACE RECOGNITION — ESP32 RECEIVER (OLED)
+ *  SISTEM ABSENSI FACE RECOGNITION — ESP32 POLLING (LCD 16x2 I2C)
  *  Hardware : ESP32 Dev Board
- *             OLED SSD1306 (128x64) I2C (SDA=GPIO21, SCL=GPIO22)
+ *             LCD 16x2 dengan Backpack I2C (SDA=GPIO21, SCL=GPIO22)
  *             LED Hijau → GPIO 26
  *             LED Merah  → GPIO 27
  *
- *  Fungsi   : Menerima HTTP POST dari Flask (laptop),
- *             menampilkan nama, NIM, & status di OLED SSD1306,
- *             menyalakan LED sesuai status absensi.
+ *  Fungsi   : Menggunakan metode POLLING. ESP32 secara proaktif
+ *             meminta (GET) data dari server Flask di Cloud/Lokal.
  * ============================================================
  */
 
 #include <WiFi.h>
-#include <WebServer.h>
+#include <HTTPClient.h>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <LiquidCrystal_I2C.h>
 #include <ArduinoJson.h>
 
 // ── KONFIGURASI — SESUAIKAN SEBELUM UPLOAD ───────────────────
-const char* WIFI_SSID     = "BOUTY FAMILLY";   // SSID WiFi
-const char* WIFI_PASSWORD = "Galang14";        // Password WiFi
+const char* WIFI_SSID     = "MERCUSYS_6934";   // SSID WiFi
+const char* WIFI_PASSWORD = "Labmr1202_";      // Password WiFi
+
+// URL Endpoint API Polling di Server Flask Anda (Railway / Lokal)
+// Ganti bagian host dengan URL Railway atau IP Lokal Anda
+const char* FLASK_URL     = "http://192.168.0.x:5000/api/esp32/poll";
+// Contoh jika Railway: "https://absensi-production.up.railway.app/api/esp32/poll"
 // ─────────────────────────────────────────────────────────────
 
 // ── PIN DEFINITION ────────────────────────────────────────────
 #define PIN_LED_HIJAU  26
 #define PIN_LED_MERAH  27
 
-// ── OLED SSD1306 CONFIGURATION ────────────────────────────────
-#define SCREEN_WIDTH   128  // Lebar layar OLED (pixel)
-#define SCREEN_HEIGHT   64  // Tinggi layar OLED (pixel)
-#define OLED_RESET      -1  // Share reset pin dengan ESP32
-#define SCREEN_ADDRESS 0x3C // Alamat I2C OLED (biasanya 0x3C)
+// ── LCD I2C CONFIGURATION ─────────────────────────────────────
+#define LCD_ADDRESS     0x27 
+#define LCD_COLUMNS     16
+#define LCD_ROWS        2
 // ─────────────────────────────────────────────────────────────
 
-WebServer        server(80);
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+LiquidCrystal_I2C  lcd(LCD_ADDRESS, LCD_COLUMNS, LCD_ROWS);
 
-// Durasi nyala LED & tampilan OLED (milidetik)
-const unsigned long DURASI_BERHASIL = 3000;
-const unsigned long DURASI_DUPLIKAT = 2000;
-const unsigned long DURASI_GAGAL    = 2000;
+// Timer untuk polling dan reset layar
+unsigned long last_poll_time = 0;
+const unsigned long POLL_INTERVAL   = 1000; // Tarik data setiap 1 detik
+const unsigned long TAMPIL_DURATION = 3000; // Berapa lama notif tampil (ms)
 
-// Waktu kapan OLED & LED harus direset ke standby
 unsigned long waktu_reset = 0;
 bool          sedang_tampil = false;
 
 // Deklarasi fungsi tampilan
 void tampil_standby();
 void tampil_berhasil(String nama, String nim);
-void tampil_duplikat(String nama);
-void tampil_gagal();
+void tampil_gagal(String pesan1, String pesan2);
 
 // ── SETUP ─────────────────────────────────────────────────────
 void setup() {
@@ -63,27 +62,17 @@ void setup() {
   digitalWrite(PIN_LED_HIJAU, LOW);
   digitalWrite(PIN_LED_MERAH, LOW);
 
-  // Inisialisasi I2C & OLED
-  Wire.begin(21, 22);   // SDA=GPIO21, SCL=GPIO22
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("[ERROR] Alokasi SSD1306 gagal! Cek alamat I2C atau wiring."));
-  } else {
-    Serial.println(F("[OK] OLED SSD1306 Berhasil diinisialisasi"));
-    display.clearDisplay();
-    display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(1);
-    
-    // Tampilan awal menghubungkan WiFi
-    display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-    display.setCursor(8, 12);
-    display.println("SISTEM ABSENSI");
-    display.setCursor(8, 28);
-    display.println("Menghubungkan...");
-    display.setCursor(8, 44);
-    display.print("SSID: ");
-    display.print(WIFI_SSID);
-    display.display();
-  }
+  // Inisialisasi LCD
+  Wire.begin(21, 22);   
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+
+  // Layar Boot
+  lcd.setCursor(0, 0);
+  lcd.print("SISTEM ABSENSI");
+  lcd.setCursor(0, 1);
+  lcd.print("Connecting WiFi ");
 
   // Koneksi WiFi
   Serial.println("\n[INFO] Menghubungkan ke WiFi...");
@@ -93,265 +82,141 @@ void setup() {
   while (WiFi.status() != WL_CONNECTED && coba < 20) {
     delay(500);
     Serial.print(".");
+    lcd.setCursor(14 + (coba % 2), 1);
+    lcd.print(".");
     coba++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\n[OK] WiFi Terhubung!");
-    Serial.print("[INFO] IP Address ESP32: ");
-    Serial.println(WiFi.localIP());
-
-    display.clearDisplay();
-    display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-    display.drawLine(4, 18, 123, 18, SSD1306_WHITE);
-    
-    display.setCursor(8, 6);
-    display.print("WiFi Connected!");
-    
-    display.setCursor(8, 26);
-    display.print("IP Address:");
-    display.setCursor(8, 42);
-    display.print(WiFi.localIP().toString());
-    display.display();
-    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi Connected!");
+    lcd.setCursor(0, 1);
+    lcd.print(WiFi.localIP().toString());
     delay(3000);
     tampil_standby();
   } else {
     Serial.println("\n[ERROR] Gagal terhubung ke WiFi!");
-    display.clearDisplay();
-    display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-    display.setCursor(8, 12);
-    display.println("Koneksi WiFi Gagal!");
-    display.setCursor(8, 28);
-    display.println("Cek SSID/Password");
-    display.display();
-    // Nyalakan LED merah sebagai indikator error
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi Conn Failed");
+    lcd.setCursor(0, 1);
+    lcd.print("Check SSID/Pass");
     digitalWrite(PIN_LED_MERAH, HIGH);
   }
-
-  // Daftarkan endpoint HTTP
-  server.on("/absensi",    HTTP_POST, handle_absensi);
-  server.on("/ping",       HTTP_GET,  handle_ping);
-  server.on("/",           HTTP_GET,  handle_root);
-  server.onNotFound(handle_not_found);
-
-  server.begin();
-  Serial.println("[INFO] HTTP Server aktif di port 80");
-  Serial.println("[INFO] Endpoint: POST /absensi");
 }
 
 // ── LOOP ──────────────────────────────────────────────────────
 void loop() {
-  server.handleClient();
+  // Reconnect WiFi jika putus
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.reconnect();
+    delay(3000);
+    return;
+  }
 
-  // Reset OLED & LED ke standby setelah durasi habis
+  // Cek apakah sudah waktunya polling ke server (dan tidak sedang menampilkan data)
+  if (!sedang_tampil && millis() - last_poll_time >= POLL_INTERVAL) {
+    last_poll_time = millis();
+    poll_server();
+  }
+
+  // Kembalikan layar ke mode standby setelah durasi notifikasi selesai
   if (sedang_tampil && millis() > waktu_reset) {
     sedang_tampil = false;
     digitalWrite(PIN_LED_HIJAU, LOW);
     digitalWrite(PIN_LED_MERAH, LOW);
     tampil_standby();
   }
+}
 
-  // Reconnect WiFi jika terputus
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("[WARN] WiFi terputus, mencoba reconnect...");
-    WiFi.reconnect();
-    delay(3000);
+// ── FUNGSI POLLING ────────────────────────────────────────────
+void poll_server() {
+  HTTPClient http;
+  http.begin(FLASK_URL);
+  
+  // Timeout 2 detik agar tidak membeku
+  http.setTimeout(2000);
+  
+  int httpCode = http.GET();
+  
+  if (httpCode == 200) {
+    String payload = http.getString();
+    // {"status":"ok","data":{"nama":"...","nim":"...","status":"berhasil"}}
+    // {"status":"empty","data":null}
+    
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    
+    if (!err && doc["status"] == "ok") {
+      JsonObject data = doc["data"];
+      String nama   = data["nama"]   | "Unknown";
+      String nim    = data["nim"]    | "--------";
+      String status = data["status"] | "gagal";
+
+      Serial.println("[INFO] Data ditarik: " + nama + " | " + status);
+      
+      if (status == "berhasil") {
+        tampil_berhasil(nama, nim);
+      } else if (status == "duplikat") {
+        tampil_gagal(nama, "SUDAH ABSEN OK! ");
+      } else {
+        tampil_gagal("ABSENSI GAGAL", "TIDAK DIKENALI");
+      }
+    }
+  } else if (httpCode < 0) {
+    Serial.println("[ERROR] Server tidak dapat dijangkau: " + http.errorToString(httpCode));
   }
+  
+  http.end();
 }
 
-// ── HANDLER: POST /absensi ────────────────────────────────────
-/*
- * Format JSON yang diterima dari Flask:
- * {
- *   "nama"   : "Budi Santoso",
- *   "nim"    : "12345678",
- *   "status" : "berhasil"   // atau "duplikat" atau "gagal"
- * }
- */
-void handle_absensi() {
-  if (!server.hasArg("plain")) {
-    server.send(400, "application/json", "{\"error\":\"Body kosong\"}");
-    return;
-  }
-
-  String body = server.arg("plain");
-  Serial.println("[INFO] Data diterima: " + body);
-
-  // Parse JSON (Kompatibel dengan ArduinoJson v7)
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, body);
-  if (err) {
-    Serial.println("[ERROR] JSON tidak valid: " + String(err.c_str()));
-    server.send(400, "application/json", "{\"error\":\"JSON tidak valid\"}");
-    return;
-  }
-
-  String nama   = doc["nama"]   | "Unknown";
-  String nim    = doc["nim"]    | "--------";
-  String status = doc["status"] | "gagal";
-
-  Serial.println("[INFO] Nama   : " + nama);
-  Serial.println("[INFO] NIM    : " + nim);
-  Serial.println("[INFO] Status : " + status);
-
-  // Tampilkan di OLED & nyalakan LED
-  if (status == "berhasil") {
-    tampil_berhasil(nama, nim);
-  } else if (status == "duplikat") {
-    tampil_duplikat(nama);
-  } else {
-    tampil_gagal();
-  }
-
-  server.send(200, "application/json", "{\"status\":\"ok\"}");
-}
-
-// ── HANDLER: GET /ping ────────────────────────────────────────
-void handle_ping() {
-  String json = "{\"status\":\"ok\",\"ip\":\"" + WiFi.localIP().toString() + "\"}";
-  server.send(200, "application/json", json);
-}
-
-// ── HANDLER: GET / ────────────────────────────────────────────
-void handle_root() {
-  String html = "<h2>ESP32 Absensi Server</h2>";
-  html += "<p>IP: " + WiFi.localIP().toString() + "</p>";
-  html += "<p>Status: Online</p>";
-  html += "<p>OLED: SSD1306 Active</p>";
-  html += "<p>Endpoint: POST /absensi</p>";
-  server.send(200, "text/html", html);
-}
-
-// ── HANDLER: Not Found ────────────────────────────────────────
-void handle_not_found() {
-  server.send(404, "application/json", "{\"error\":\"Endpoint tidak ditemukan\"}");
-}
-
-// ── TAMPILAN OLED SSD1306 ─────────────────────────────────────
+// ── TAMPILAN LCD 16x2 ─────────────────────────────────────────
 
 void tampil_standby() {
-  display.clearDisplay();
-  
-  // Gambar border tipis luar
-  display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-  display.drawLine(4, 20, 123, 20, SSD1306_WHITE);
-  
-  // Header
-  display.setTextSize(1);
-  display.setCursor(20, 6);
-  display.print("SISTEM ABSENSI");
-  
-  // Instruksi
-  display.setCursor(18, 28);
-  display.print("HADAP KE KAMERA");
-  
-  // Status Standby
-  display.setCursor(35, 46);
-  display.print("[ READY ]");
-  
-  display.display();
+  lcd.clear();
+  lcd.setCursor(1, 0);
+  lcd.print("SISTEM ABSENSI");
+  lcd.setCursor(0, 1);
+  lcd.print("HADAP KE KAMERA ");
 }
 
 void tampil_berhasil(String nama, String nim) {
-  // Matikan LED merah, nyalakan LED hijau
   digitalWrite(PIN_LED_MERAH, LOW);
   digitalWrite(PIN_LED_HIJAU, HIGH);
 
-  display.clearDisplay();
-  
-  // Border
-  display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-  display.drawLine(4, 18, 123, 18, SSD1306_WHITE);
+  lcd.clear();
+  if (nama.length() > 16) nama = nama.substring(0, 16);
+  lcd.setCursor(0, 0);
+  lcd.print(nama);
 
-  // Header status
-  display.setTextSize(1);
-  display.setCursor(16, 6);
-  display.print("ABSENSI BERHASIL");
-
-  // Nama (potong jika terlalu panjang, max 18 karakter untuk muat di 1 baris)
-  if (nama.length() > 18) nama = nama.substring(0, 18);
-  display.setCursor(8, 24);
-  display.print(nama);
-
-  // NIM
-  if (nim.length() > 18) nim = nim.substring(0, 18);
-  display.setCursor(8, 36);
-  display.print(nim);
-
-  // Status Kehadiran
-  display.setCursor(8, 48);
-  display.print("Status: HADIR OK");
-
-  display.display();
+  String line2 = nim;
+  if (line2.length() + 8 <= 16) {
+    line2 += " - HADIR";
+  } else {
+    line2 = line2.substring(0, 16);
+  }
+  lcd.setCursor(0, 1);
+  lcd.print(line2);
 
   sedang_tampil = true;
-  waktu_reset   = millis() + DURASI_BERHASIL;
-
-  Serial.println("[OLED] Tampil BERHASIL: " + nama + " | " + nim);
+  waktu_reset   = millis() + TAMPIL_DURATION;
 }
 
-void tampil_duplikat(String nama) {
-  // Nyalakan LED merah
+void tampil_gagal(String pesan1, String pesan2) {
   digitalWrite(PIN_LED_HIJAU, LOW);
   digitalWrite(PIN_LED_MERAH, HIGH);
 
-  display.clearDisplay();
-  
-  // Border
-  display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-  display.drawLine(4, 18, 123, 18, SSD1306_WHITE);
+  lcd.clear();
+  if (pesan1.length() > 16) pesan1 = pesan1.substring(0, 16);
+  lcd.setCursor(0, 0);
+  lcd.print(pesan1);
 
-  // Header status
-  display.setTextSize(1);
-  display.setCursor(20, 6);
-  display.print("SUDAH ABSENSI");
-
-  // Nama
-  if (nama.length() > 18) nama = nama.substring(0, 18);
-  display.setCursor(8, 24);
-  display.print(nama);
-
-  // Pesan peringatan
-  display.setCursor(8, 38);
-  display.print("Anda sudah terdata");
-  display.setCursor(8, 48);
-  display.print("hari ini!");
-
-  display.display();
+  if (pesan2.length() > 16) pesan2 = pesan2.substring(0, 16);
+  lcd.setCursor(0, 1);
+  lcd.print(pesan2);
 
   sedang_tampil = true;
-  waktu_reset   = millis() + DURASI_DUPLIKAT;
-
-  Serial.println("[OLED] Tampil DUPLIKAT: " + nama);
-}
-
-void tampil_gagal() {
-  // Nyalakan LED merah
-  digitalWrite(PIN_LED_HIJAU, LOW);
-  digitalWrite(PIN_LED_MERAH, HIGH);
-
-  display.clearDisplay();
-  
-  // Border
-  display.drawRect(0, 0, 128, 64, SSD1306_WHITE);
-  display.drawLine(4, 18, 123, 18, SSD1306_WHITE);
-
-  // Header status
-  display.setTextSize(1);
-  display.setCursor(20, 6);
-  display.print("ABSENSI GAGAL");
-
-  // Pesan peringatan
-  display.setCursor(14, 28);
-  display.print("Wajah Tidak");
-  display.setCursor(14, 40);
-  display.print("Dikenali!");
-
-  display.display();
-
-  sedang_tampil = true;
-  waktu_reset   = millis() + DURASI_GAGAL;
-
-  Serial.println("[OLED] Tampil GAGAL / tidak dikenali");
+  waktu_reset   = millis() + TAMPIL_DURATION;
 }

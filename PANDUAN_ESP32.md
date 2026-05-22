@@ -1,5 +1,5 @@
-# PANDUAN INTEGRASI ESP32 — Sistem Absensi Face Recognition (OLED SSD1306)
-> Baca panduan ini saat hardware ESP32, layar OLED SSD1306 I2C, dan LED sudah siap dirangkai.
+# PANDUAN INTEGRASI ESP32 — Sistem Absensi Face Recognition (LCD 16x2 I2C)
+> Baca panduan ini saat hardware ESP32, layar LCD 16x2 dengan backpack I2C, dan LED sudah siap dirangkai.
 
 ---
 
@@ -8,7 +8,7 @@
 | Komponen              | Jumlah | Keterangan                              |
 |-----------------------|--------|-----------------------------------------|
 | ESP32 Dev Board       | 1      | Versi 30-pin atau 38-pin                |
-| OLED SSD1306 128x64   | 1      | Layar OLED I2C                          |
+| LCD 16x2 I2C          | 1      | Layar LCD 16x2 dengan Backpack I2C soldered |
 | LED Hijau             | 1      | Warna hijau (absensi berhasil)          |
 | LED Merah             | 1      | Warna merah (gagal / sudah absen)       |
 | Resistor 220Ω         | 2      | Untuk membatasi arus LED                |
@@ -22,20 +22,22 @@
 
 Sebelum melakukan upload, pastikan Anda telah menginstal pustaka-pustaka berikut melalui **Library Manager** di Arduino IDE (`Ctrl+Shift+I` atau `Sketch -> Include Library -> Manage Libraries...`):
 
-1. **Adafruit SSD1306** (oleh Adafruit)
-2. **Adafruit GFX Library** (oleh Adafruit)
-3. **ArduinoJson** (oleh Benoit Blanchon - disarankan menggunakan versi 7)
+1. **LiquidCrystal I2C** (oleh Frank de Brabander)
+2. **ArduinoJson** (oleh Benoit Blanchon - disarankan menggunakan versi 7)
 
 ---
 
 ## LANGKAH 2 — SKEMA WIRING
 
-### Koneksi Layar OLED SSD1306 ke ESP32
+### Koneksi Layar LCD 16x2 I2C ke ESP32
+
+> [!NOTE]
+> Layar LCD 16x2 memerlukan suplai daya **5V** untuk menghasilkan kecerahan karakter backlight yang optimal. Hubungkan VCC LCD ke pin **VIN** atau **5V** pada board ESP32.
 
 ```
-OLED SSD1306     ESP32
+LCD 16x2 I2C     ESP32
 ─────────────────────────
-VCC          →   3.3V (atau 5V jika modul mendukung 5V)
+VCC          →   VIN (atau 5V)
 GND          →   GND
 SDA          →   GPIO 21 (SDA)
 SCL          →   GPIO 22 (SCL)
@@ -58,10 +60,10 @@ Catatan:
                     ┌─────────────────────┐
                     │       ESP32          │
                     │                     │
-    OLED SDA ───────┤ GPIO 21             │
-    OLED SCL ───────┤ GPIO 22             │
-    OLED VCC ───────┤ 3.3V           USB  │──── ke Laptop
-    OLED GND ───────┤ GND                 │
+     LCD SDA ───────┤ GPIO 21             │
+     LCD SCL ───────┤ GPIO 22             │
+     LCD VCC ───────┤ VIN (5V)       USB  │──── ke Laptop
+     LCD GND ───────┤ GND                 │
                     │                     │
     LED Hijau ──R───┤ GPIO 26             │
     LED Merah ──R───┤ GPIO 27             │
@@ -73,9 +75,9 @@ Catatan:
 
 ---
 
-## LANGKAH 3 — CARI ALAMAT I2C OLED (BIASANYA 0x3C)
+## LANGKAH 3 — CARI ALAMAT I2C LCD (BIASANYA 0x27 ATAU 0x3F)
 
-Sebagian besar modul OLED SSD1306 menggunakan alamat I2C **0x3C** secara default. Namun, jika layar tidak menyala setelah upload, Anda dapat memverifikasi alamatnya dengan meng-upload sketch I2C Scanner berikut ke ESP32:
+Sebagian besar modul backpack LCD I2C menggunakan alamat I2C **0x27** atau **0x3F** secara default. Namun, jika layar tidak menampilkan teks setelah upload, Anda dapat memverifikasi alamatnya dengan meng-upload sketch I2C Scanner berikut ke ESP32:
 
 ```cpp
 #include <Wire.h>
@@ -101,9 +103,9 @@ void loop() {}
 **Cara menjalankan:**
 1. Upload sketch scanner di atas ke ESP32.
 2. Buka **Serial Monitor** (Tools → Serial Monitor) dan set baud rate ke **115200**.
-3. Jika alamat yang terdeteksi bukan `0x3C` (misal `0x3D`), buka file `esp32_absensi.ino` lalu ubah bagian:
+3. Jika alamat yang terdeteksi bukan `0x27` (misal `0x3F`), buka file `esp32_absensi.ino` lalu ubah bagian:
    ```cpp
-   #define SCREEN_ADDRESS 0x3C // Ganti dengan alamat hasil scan Anda
+   #define LCD_ADDRESS 0x27 // Ganti dengan alamat hasil scan Anda jika berbeda
    ```
 
 ---
@@ -135,7 +137,7 @@ Setelah upload selesai:
    [INFO] IP Address ESP32: 192.168.1.15
    [INFO] HTTP Server aktif di port 80
    ```
-4. **Catat IP Address tersebut** (layar OLED juga akan menampilkannya selama 3 detik setelah berhasil terkoneksi ke WiFi).
+4. **Catat IP Address tersebut** (layar LCD 16x2 juga akan menampilkannya selama 3 detik setelah berhasil terkoneksi ke WiFi).
 
 ---
 
@@ -155,7 +157,7 @@ ESP32_TIMEOUT = 3
 
 ## LANGKAH 7 — VERIFIKASI PENGUJIAN
 
-Sebelum menjalankan sistem penuh, Anda dapat menguji respons layar OLED & LED menggunakan command prompt (CMD) di laptop:
+Sebelum menjalankan sistem penuh, Anda dapat menguji respons layar LCD & LED menggunakan command prompt (CMD) atau PowerShell di laptop:
 
 ### 1. Uji Ping ke ESP32:
 ```cmd
@@ -166,13 +168,13 @@ Hasil respons yang diharapkan:
 {"status":"ok","ip":"192.168.1.15"}
 ```
 
-### 2. Kirim Data Absensi Manual (Uji OLED & LED):
+### 2. Kirim Data Absensi Manual (Uji LCD & LED):
 ```cmd
 curl -X POST http://192.168.1.15/absensi -H "Content-Type: application/json" -d "{\"nama\":\"Galang Pratama\",\"nim\":\"210010203\",\"status\":\"berhasil\"}"
 ```
 **Hasil pada Hardware:**
-- Layar OLED menampilkan kotak border dengan header **"ABSENSI BERHASIL"**, baris nama **"Galang Pratama"**, NIM **"210010203"**, dan status **"Status: HADIR OK"**.
-- LED Hijau menyala selama 3 detik, setelah itu layar kembali ke mode Standby ("SISTEM ABSENSI - HADAP KE KAMERA").
+- Layar LCD 16x2 menampilkan baris pertama: **"Galang Pratama"**, dan baris kedua: **"210010203 - HADIR"**.
+- LED Hijau menyala selama 3 detik, setelah itu layar kembali ke mode Standby ("SISTEM ABSENSI / HADAP KE KAMERA").
 
 ---
 
@@ -180,7 +182,8 @@ curl -X POST http://192.168.1.15/absensi -H "Content-Type: application/json" -d 
 
 | Masalah | Kemungkinan Penyebab | Solusi |
 |---------|---------------------|--------|
-| Layar OLED tidak menyala sama sekali | Kabel VCC/GND atau SDA/SCL terbalik; alamat I2C tidak tepat. | Cek kembali perkabelan. Jalankan I2C scanner untuk memverifikasi alamat (misal `0x3D` atau `0x3C`). |
-| Teks pada OLED terpotong | Nama mahasiswa terlalu panjang. | Kode secara otomatis membatasi nama maksimal 18 karakter agar pas dalam lebar layar OLED. |
-| ESP32 gagal terhubung ke WiFi | SSID/Password salah atau frekuensi WiFi 5GHz (ESP32 hanya mendukung 2.4GHz). | Pastikan konfigurasi SSID/Password benar dan WiFi laptop diset ke 2.4GHz. |
-| Pengiriman data dari Flask timeout | ESP32 dan laptop berada di jaringan WiFi berbeda. | Hubungkan laptop dan ESP32 ke router/hotspot yang sama. |
+| Layar LCD menyala biru tapi **tidak ada karakter/tulisan** | Kontras LCD belum diatur. | Putar sekrup kecil berwarna kuning/kuningan (**potensiometer**) di bagian belakang modul backpack I2C LCD menggunakan obeng kecil sampai karakter muncul dengan jelas. |
+| Layar LCD tidak menyala sama sekali | Kabel VCC/GND atau SDA/SCL terbalik atau kurang kencang. | Cek kembali perkabelan. Pastikan pin VCC masuk ke 5V/VIN agar backlight menyala. |
+| Karakter di LCD berantakan atau terpotong | Nama mahasiswa melebihi 16 karakter. | Kode program secara otomatis memotong (*substring*) nama mahasiswa menjadi maksimal 16 karakter agar pas dalam lebar kolom LCD. |
+| ESP32 gagal terhubung ke WiFi | SSID/Password salah atau frekuensi WiFi 5GHz. | ESP32 hanya mendukung jaringan WiFi 2.4GHz. Pastikan konfigurasi SSID/Password benar dan WiFi laptop diset ke frekuensi 2.4GHz. |
+| Pengiriman data dari Flask timeout | ESP32 dan laptop berada di jaringan WiFi berbeda. | Hubungkan laptop dan ESP32 ke router/hotspot/tethering yang sama. |
