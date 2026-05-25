@@ -18,6 +18,15 @@ from config import (FLASK_HOST, FLASK_PORT, FLASK_SECRET_KEY,
                     SNAPSHOT_PATH, TOLERANSI_MENIT, DATASET_PATH,
                     CONFIDENCE_THRESHOLD, ANTI_SPOOFING_THRESHOLD,
                     ESP32_ENABLED, MODEL_PATH)
+import os
+import time
+
+# ── Force Timezone Asia/Jakarta untuk Railway ─────────────────
+os.environ['TZ'] = 'Asia/Jakarta'
+try:
+    time.tzset()
+except AttributeError:
+    pass # Windows fallback
 
 # ── Inisialisasi Flask + SocketIO ─────────────────────────────
 app = Flask(__name__)

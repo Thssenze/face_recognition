@@ -269,12 +269,17 @@ async function aktifkanKamera() {
     }
 }
 
+let isCapturing = false; // Mencegah request menumpuk (race condition)
+
 // Capture satu frame dan kirim ke server via AJAX
 function captureFrame() {
     if (jumlahFoto >= MAX_FOTO) {
         selesaiCapture();
         return;
     }
+    if (isCapturing) return; // Skip frame ini jika frame sebelumnya belum selesai diupload
+    isCapturing = true;
+    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
@@ -320,7 +325,10 @@ function captureFrame() {
         }
     })
     .catch(() => {
-        statusLabel.textContent = 'Koneksi gagal';
+        statusLabel.textContent = 'Koneksi gagal, mencoba ulang...';
+    })
+    .finally(() => {
+        isCapturing = false;
     });
 }
 

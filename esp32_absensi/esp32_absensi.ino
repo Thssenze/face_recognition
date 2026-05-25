@@ -12,6 +12,7 @@
  */
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
@@ -23,9 +24,8 @@ const char* WIFI_PASSWORD = "Labmr1202_";      // Password WiFi
 
 // URL Endpoint API Polling di Server Flask Anda (Railway / Lokal)
 // Ganti bagian host dengan URL Railway atau IP Lokal Anda
-const char* FLASK_URL     = "http://192.168.0.x:5000/api/esp32/poll";
 // Contoh jika Railway: "https://absensi-production.up.railway.app/api/esp32/poll"
-// ─────────────────────────────────────────────────────────────
+const char* FLASK_URL     = "https://faceabsensi.up.railway.app/api/esp32/poll";
 
 // ── PIN DEFINITION ────────────────────────────────────────────
 #define PIN_LED_HIJAU  26
@@ -133,11 +133,14 @@ void loop() {
 
 // ── FUNGSI POLLING ────────────────────────────────────────────
 void poll_server() {
-  HTTPClient http;
-  http.begin(FLASK_URL);
+  WiFiClientSecure client;
+  client.setInsecure(); // Mengabaikan validasi SSL certificate (karena Railway pakai HTTPS)
   
-  // Timeout 2 detik agar tidak membeku
-  http.setTimeout(2000);
+  HTTPClient http;
+  http.begin(client, FLASK_URL);
+  
+  // Timeout 5 detik agar koneksi HTTPS yang lebih berat punya waktu
+  http.setTimeout(5000);
   
   int httpCode = http.GET();
   
