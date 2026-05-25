@@ -1,0 +1,14 @@
+[build]
+builder = "NIXPACKS"
+
+[build.nixpacksConfig]
+# Paksa Python 3.10 untuk kompatibilitas OpenCV LBPH
+pythonVersion = "3.10"
+
+# Install system dependencies untuk OpenCV headless di Linux
+aptPkgs = ["libglib2.0-0", "libsm6", "libxext6", "libxrender-dev"]
+
+[deploy]
+startCommand = "gunicorn --worker-class eventlet -w 1 --timeout 120 --bind 0.0.0.0:$PORT app:app"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

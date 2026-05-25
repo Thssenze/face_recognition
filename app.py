@@ -17,14 +17,18 @@ import database as db
 from config import (FLASK_HOST, FLASK_PORT, FLASK_SECRET_KEY,
                     SNAPSHOT_PATH, TOLERANSI_MENIT, DATASET_PATH,
                     CONFIDENCE_THRESHOLD, ANTI_SPOOFING_THRESHOLD,
-                    ESP32_ENABLED, ESP32_IP, ESP32_PORT, ESP32_TIMEOUT,
-                    MODEL_PATH)
+                    ESP32_ENABLED, MODEL_PATH)
 
 # ── Inisialisasi Flask + SocketIO ─────────────────────────────
 app = Flask(__name__)
 app.secret_key = FLASK_SECRET_KEY
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Pastikan folder yang dibutuhkan ada (jalan baik via python maupun gunicorn)
+os.makedirs(SNAPSHOT_PATH, exist_ok=True)
+os.makedirs(DATASET_PATH, exist_ok=True)
+os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 
 # Status kamera global
 camera_state = {'active': False}
@@ -1336,19 +1340,14 @@ def _auto_alpha_checker():
 # ══════════════════════════════════════════════════════════════
 
 
+# ── Jalankan auto-alpha checker di background (aktif baik via python maupun gunicorn) ──
+_alpha_thread = threading.Thread(target=_auto_alpha_checker, daemon=True)
+_alpha_thread.start()
+
+
 if __name__ == '__main__':
-    # Pastikan folder yang dibutuhkan ada
-    os.makedirs(SNAPSHOT_PATH, exist_ok=True)
-    os.makedirs(DATASET_PATH, exist_ok=True)
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-
-    # Jalankan auto-alpha checker di background thread
-    import threading
-    alpha_thread = threading.Thread(target=_auto_alpha_checker, daemon=True)
-    alpha_thread.start()
-
     print("=" * 50)
-    print("   FLASK + SOCKETIO — SISTEM ABSENSI")
+    print("   FLASK + SOCKETIO \u2014 SISTEM ABSENSI")
     print("=" * 50)
     print(f"\n[INFO] Dashboard  : http://127.0.0.1:{FLASK_PORT}")
     print(f"[INFO] Login      : http://127.0.0.1:{FLASK_PORT}/login")
@@ -1358,5 +1357,6 @@ if __name__ == '__main__':
     print(f"[INFO] ESP32      : {'Aktif' if ESP32_ENABLED else 'Nonaktif'}")
     print(f"[INFO] Auto-Alpha : Aktif (cek setiap 60 detik)")
     print(f"[INFO] Tekan Ctrl+C untuk menghentikan.\n")
-    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=True,
+    is_debug = os.environ.get('FLASK_DEBUG', 'true').lower() == 'true'
+    socketio.run(app, host=FLASK_HOST, port=FLASK_PORT, debug=is_debug,
                  allow_unsafe_werkzeug=True)

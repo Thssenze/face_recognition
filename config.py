@@ -24,7 +24,7 @@ TOLERANSI_MENIT         = 15
 # === KONFIGURASI FLASK ===
 FLASK_HOST       = '0.0.0.0'
 FLASK_PORT       = int(os.environ.get('PORT', 5000))
-FLASK_DEBUG      = True
+FLASK_DEBUG      = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 FLASK_SECRET_KEY = os.environ.get('SECRET_KEY', 'ganti-dengan-secret-key-random-panjang-anda')
 
 # === KONFIGURASI ESP32 ===
