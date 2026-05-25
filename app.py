@@ -30,6 +30,15 @@ os.makedirs(SNAPSHOT_PATH, exist_ok=True)
 os.makedirs(DATASET_PATH, exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
 
+# Eksekusi migrasi otomatis jika diinstruksikan via Environment Variables (Railway)
+if os.environ.get('RUN_MIGRATION', 'false').lower() == 'true':
+    print("\n[INFO] Menjalankan migrasi database otomatis...")
+    try:
+        import run_migration
+        print("[OK] Migrasi selesai via env RUN_MIGRATION.")
+    except Exception as e:
+        print(f"[ERROR] Migrasi otomatis gagal: {e}")
+
 # Status kamera global
 camera_state = {'active': False}
 
