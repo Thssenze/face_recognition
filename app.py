@@ -35,6 +35,7 @@ if os.environ.get('RUN_MIGRATION', 'false').lower() == 'true':
     print("\n[INFO] Menjalankan migrasi database otomatis...")
     try:
         import run_migration
+        run_migration.run()
         print("[OK] Migrasi selesai via env RUN_MIGRATION.")
     except Exception as e:
         print(f"[ERROR] Migrasi otomatis gagal: {e}")
